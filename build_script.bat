@@ -11,8 +11,7 @@ if %ERRORLEVEL% EQU 0 (
     echo Copy the .jar file to your server's mods folder
 ) else (
     echo.
-    echo ✗ Build failed! Check the error messages above.
-    echo Press any key to see more details or close...
+    echo X Build failed! Check the error messages above.
 )
 echo.
 echo Press any key to close this window...
