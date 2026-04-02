@@ -1,0 +1,11 @@
+{
+  "required": true,
+  "package": "com.danz.ipwl.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "ServerLoginNetworkHandlerMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

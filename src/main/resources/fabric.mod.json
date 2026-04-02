@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "ipwl",
+  "version": "${version}",
+  "name": "IP Whitelist",
+  "description": "Advanced IP-based whitelist system with bot protection for Minecraft servers",
+  "authors": ["danz"],
+  "contact": {
+    "homepage": "https://github.com/Dany0443/ipwl",
+    "sources": "https://github.com/Dany0443/ipwl"
+  },
+  "license": "MIT",
+  "icon": "assets/ipwl/icon.png",
+  "environment": "server",
+  "entrypoints": {
+    "main": [
+        "com.danz.ipwl.IPWLMod"
+    ]
+  },
+  "mixins": [
+    "ipwl.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.18.4",
+    "fabric-api": "*",
+    "minecraft": "~26.1",
+    "java": ">=25"
+  }
+}
