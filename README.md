@@ -1,4 +1,4 @@
-Working right now for the new versions. Expect update in the folowing days + some new features.
+Updated for 26.1, but still working for the features.
 
 ---
 
