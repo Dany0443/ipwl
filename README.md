@@ -1,3 +1,7 @@
+Working right now for the new versions. Expect update in the folowing days + some new features.
+
+--
+
 IPWL (IP Based Whitelist)
 
 A simple but powerful Fabric mod that secures your Minecraft server by binding players to specific IP addresses. It keeps your server safe without the complexity.
