@@ -26,6 +26,15 @@ public class IPWLConfig {
     private boolean allowSubnetPatterns = true;
     private boolean verboseLogging = false;
 
+    // --- Unknown-player join alerts ---
+    /** Send clickable alert to admins when an unknown player tries to join. */
+    private boolean enableJoinAlerts = true;
+    /** Minimum milliseconds between alerts for the same IP (anti-spam). */
+    private long alertCooldownMs = 30000;
+
+    // --- Persistent banned IPs (permanent bans via /ipwl banip) ---
+    private Set<String> bannedIps = new HashSet<>();
+
     private Set<String> admins = new HashSet<>();
 
     public static IPWLConfig load() {
@@ -37,7 +46,11 @@ public class IPWLConfig {
         }
 
         try (FileReader reader = new FileReader(CONFIG_FILE)) {
-            return GSON.fromJson(reader, IPWLConfig.class);
+            IPWLConfig loaded = GSON.fromJson(reader, IPWLConfig.class);
+            // Null-guard collections in case the JSON predates these fields
+            if (loaded.admins    == null) loaded.admins    = new HashSet<>();
+            if (loaded.bannedIps == null) loaded.bannedIps = new HashSet<>();
+            return loaded;
         } catch (IOException e) {
             IPWLMod.LOGGER.error("Failed to load configuration", e);
             return new IPWLConfig();
@@ -52,20 +65,35 @@ public class IPWLConfig {
         }
     }
 
+    // --- Admins ---
     public boolean isAdmin(String username) { return admins.contains(username); }
-    public void addAdmin(String username) { admins.add(username); save(); }
+    public void addAdmin(String username)    { admins.add(username); save(); }
     public void removeAdmin(String username) { admins.remove(username); save(); }
-    public Set<String> getAdmins() { return new HashSet<>(admins); }
-    public boolean isVerboseLogging() { return verboseLogging; }
+    public Set<String> getAdmins()           { return new HashSet<>(admins); }
+
+    // --- Permanent IP bans ---
+    public boolean isBannedIp(String ip)  { return bannedIps.contains(ip); }
+    public void banIp(String ip)          { bannedIps.add(ip); save(); }
+    public void unbanIp(String ip)        { bannedIps.remove(ip); save(); }
+    public Set<String> getBannedIps()     { return new HashSet<>(bannedIps); }
+
+    // --- Logging ---
+    public boolean isVerboseLogging()              { return verboseLogging; }
     public void setVerboseLogging(boolean verbose) { this.verboseLogging = verbose; save(); }
-    public int getMaxConnectionsPerIp() { return maxConnectionsPerIp; }
-    public long getRateLimitWindowMs() { return rateLimitWindowMs; }
-    public int getMaxFailuresBeforeTempBan() { return maxFailuresBeforeTempBan; }
-    public long getTempBanDurationMs() { return tempBanDurationMs; }
-    public boolean isEnableRateLimit() { return enableRateLimit; }
-    public boolean isEnableDuplicateCheck() { return enableDuplicateCheck; }
-    public boolean isLogAllAttempts() { return logAllAttempts; }
-    public boolean isKickOnWhitelistRemoval() { return kickOnWhitelistRemoval; }
-    public boolean isAllowWildcardIps() { return allowWildcardIps; }
-    public boolean isAllowSubnetPatterns() { return allowSubnetPatterns; }
+
+    // --- Alerts ---
+    public boolean isEnableJoinAlerts() { return enableJoinAlerts; }
+    public long    getAlertCooldownMs() { return alertCooldownMs; }
+
+    // --- Other getters ---
+    public int     getMaxConnectionsPerIp()      { return maxConnectionsPerIp; }
+    public long    getRateLimitWindowMs()         { return rateLimitWindowMs; }
+    public int     getMaxFailuresBeforeTempBan()  { return maxFailuresBeforeTempBan; }
+    public long    getTempBanDurationMs()          { return tempBanDurationMs; }
+    public boolean isEnableRateLimit()            { return enableRateLimit; }
+    public boolean isEnableDuplicateCheck()       { return enableDuplicateCheck; }
+    public boolean isLogAllAttempts()             { return logAllAttempts; }
+    public boolean isKickOnWhitelistRemoval()     { return kickOnWhitelistRemoval; }
+    public boolean isAllowWildcardIps()           { return allowWildcardIps; }
+    public boolean isAllowSubnetPatterns()        { return allowSubnetPatterns; }
 }

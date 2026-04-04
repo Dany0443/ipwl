@@ -11,10 +11,11 @@ import org.slf4j.LoggerFactory;
 
 import com.danz.ipwl.commands.WhitelistCommands;
 import com.danz.ipwl.commands.SecurityCommands;
+import com.danz.ipwl.config.IPWLConfig;
+import com.danz.ipwl.config.IPWLMessages;
 import com.danz.ipwl.events.ConnectionEventHandler;
 import com.danz.ipwl.manager.WhitelistManager;
 import com.danz.ipwl.manager.SecurityManager;
-import com.danz.ipwl.config.IPWLConfig;
 
 public class IPWLMod implements ModInitializer {
     public static final String MOD_ID = "ipwl";
@@ -22,14 +23,16 @@ public class IPWLMod implements ModInitializer {
 
     private static MinecraftServer server;
     private static WhitelistManager whitelistManager;
-    private static SecurityManager securityManager;
-    private static IPWLConfig config;
+    private static SecurityManager  securityManager;
+    private static IPWLConfig       config;
 
     @Override
     public void onInitialize() {
         LOGGER.info("IPWhiteList Initializing...");
 
         config = IPWLConfig.load();
+        // Load messages early so every subsequent use is ready
+        IPWLMessages.reload();
 
         ServerLifecycleEvents.SERVER_STARTING.register(s -> {
             server = s;
@@ -50,37 +53,29 @@ public class IPWLMod implements ModInitializer {
     }
 
     private void shutdown() {
-        if (whitelistManager != null) whitelistManager.save();
-        if (securityManager != null) securityManager.shutdown();
-        if (config != null) config.save();
+        if (whitelistManager != null) { whitelistManager.save(); whitelistManager.shutdown(); }
+        if (securityManager  != null) securityManager.shutdown();
+        if (config           != null) config.save();
         LOGGER.info("IPWhiteList: Server stopped, all data saved");
     }
 
     public static boolean hasPermission(CommandSourceStack source) {
-        if (!source.isPlayer()) {
-            return true;
-        }
-        if (source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_ADMIN)) {
-            return true;
-        }
+        if (!source.isPlayer()) return true;
+        if (source.permissions().hasPermission(
+                net.minecraft.server.permissions.Permissions.COMMANDS_ADMIN)) return true;
         return config != null && config.isAdmin(source.getTextName());
     }
 
     public static void sendFeedback(CommandSourceStack source, String message) {
-        String cleanMessage = message.replaceAll("§[0-9a-fk-or]", "");
+        String clean = message.replaceAll("§[0-9a-fk-or]", "");
         if (source.getEntity() == null) {
-            source.sendSuccess(() -> Component.literal(cleanMessage), false);
+            source.sendSuccess(() -> Component.literal(clean), false);
         } else {
             source.sendSuccess(() -> Component.literal(message), false);
-            LOGGER.info("[IPWL] " + cleanMessage);
+            LOGGER.info("[IPWL] " + clean);
         }
     }
 
-    /**
-     * Creates a disconnect Component for player kicks.
-     * Colored for the client screen, but we log the clean version ourselves
-     * so vanilla never logs the raw §c codes.
-     */
     public static Component disconnectMessage(String coloredMessage) {
         String clean = coloredMessage.replaceAll("§[0-9a-fk-or]", "");
         LOGGER.info("[IPWL] Disconnecting player: {}", clean);
@@ -88,15 +83,15 @@ public class IPWLMod implements ModInitializer {
     }
 
     /**
-     * Reloads config from disk and replaces the live instance.
-     * Call this instead of IPWLConfig.load() directly.
+     * Reloads config, whitelist, and messages from disk.
      */
     public static void reloadConfig() {
         config = IPWLConfig.load();
+        IPWLMessages.reload();
     }
 
-    public static MinecraftServer getServer() { return server; }
-    public static WhitelistManager getWhitelistManager() { return whitelistManager; }
-    public static SecurityManager getSecurityManager() { return securityManager; }
-    public static IPWLConfig getConfig() { return config; }
+    public static MinecraftServer  getServer()          { return server; }
+    public static WhitelistManager getWhitelistManager(){ return whitelistManager; }
+    public static SecurityManager  getSecurityManager() { return securityManager; }
+    public static IPWLConfig       getConfig()          { return config; }
 }

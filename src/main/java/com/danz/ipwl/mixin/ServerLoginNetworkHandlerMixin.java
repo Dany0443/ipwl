@@ -1,6 +1,8 @@
 package com.danz.ipwl.mixin;
 
 import com.danz.ipwl.IPWLMod;
+import com.danz.ipwl.config.IPWLMessages;
+import com.danz.ipwl.manager.AlertManager;
 import com.danz.ipwl.manager.WhitelistManager;
 import com.danz.ipwl.manager.SecurityManager;
 import net.minecraft.network.Connection;
@@ -22,17 +24,11 @@ import java.net.InetSocketAddress;
 @Mixin(ServerLoginPacketListenerImpl.class)
 public abstract class ServerLoginNetworkHandlerMixin {
 
-    @Shadow @Final
-    private MinecraftServer server;
+    @Shadow @Final private MinecraftServer server;
+    @Shadow @Final public Connection connection;
+    @Shadow public abstract void disconnect(Component reason);
 
-    @Shadow @Final
-    public Connection connection;
-
-    @Shadow
-    public abstract void disconnect(Component reason);
-
-    @Unique
-    private boolean ipwl$verificationChecked = false;
+    @Unique private boolean ipwl$verificationChecked = false;
 
     @Inject(method = "handleHello", at = @At("HEAD"), cancellable = true)
     public void ipwl$onHello(ServerboundHelloPacket packet, CallbackInfo ci) {
@@ -40,62 +36,83 @@ public abstract class ServerLoginNetworkHandlerMixin {
         ipwl$verificationChecked = true;
 
         String username = packet.name();
-        String ip = ipwl$getIpAddress();
+        String ip       = ipwl$getIpAddress();
 
-        // FIX: null guard — securityManager is set in SERVER_STARTING; if somehow
-        // a login packet arrives before that fires, fail open rather than NPE.
         SecurityManager security = IPWLMod.getSecurityManager();
         if (security == null) {
-            IPWLMod.LOGGER.warn("[IPWL] SecurityManager not yet initialized, allowing {} to pass mixin check", username);
+            IPWLMod.LOGGER.warn("[IPWL] SecurityManager not yet initialized, allowing {} through mixin", username);
             return;
         }
 
-        if (security.isLockdownMode()) {
-            if (!IPWLMod.getConfig().isAdmin(username)) {
-                security.recordBlockedConnection();
-                disconnect(IPWLMod.disconnectMessage("§cServer is in lockdown mode. Only admins can join."));
-                ci.cancel();
-                return;
-            }
+        // 1. Lockdown
+        if (security.isLockdownMode() && !IPWLMod.getConfig().isAdmin(username)) {
+            security.recordBlockedConnection();
+            disconnect(Component.literal(IPWLMessages.get("ipwl.disconnect.lockdown")));
+            ci.cancel();
+            return;
         }
 
+        // 2. Permanent IP ban
+        if (IPWLMod.getConfig().isBannedIp(ip)) {
+            security.recordBlockedConnection();
+            IPWLMod.LOGGER.warn("[IPWL SECURITY] Permanently banned IP {} tried to connect as {}", ip, username);
+            disconnect(Component.literal(IPWLMessages.get("ipwl.disconnect.temp_banned")));
+            ci.cancel();
+            return;
+        }
+
+        // 3. Temp ban (covers both rate-limit and bruteforce escalations)
         if (security.isTempBanned(ip)) {
             security.recordBlockedConnection();
-            disconnect(IPWLMod.disconnectMessage("§cYour IP is temporarily banned due to too many failed connections."));
+            disconnect(Component.literal(IPWLMessages.get("ipwl.disconnect.temp_banned")));
             ci.cancel();
             return;
         }
 
+        // 4. Bruteforce detection — IP trying many different names (bot behaviour)
+        //    Must run BEFORE rate-limit so we catch multi-name attempts that individually
+        //    pass the 1-per-second rate check.
+        if (!security.checkBruteForce(ip, username)) {
+            security.recordBlockedConnection();
+            disconnect(Component.literal(IPWLMessages.get("ipwl.disconnect.temp_banned")));
+            ci.cancel();
+            return;
+        }
+
+        // 5. Rate limit (single name hammering)
         if (!security.checkRateLimit(ip)) {
-            disconnect(IPWLMod.disconnectMessage("§cToo many connection attempts. Please slow down."));
+            disconnect(Component.literal(IPWLMessages.get("ipwl.disconnect.rate_limit")));
             ci.cancel();
             return;
         }
 
-        if (IPWLMod.getConfig().isEnableDuplicateCheck() && isPlayerAlreadyOnline(username)) {
+        // 6. Duplicate session
+        if (IPWLMod.getConfig().isEnableDuplicateCheck() && ipwl$isPlayerAlreadyOnline(username)) {
             security.recordDuplicateAttempt();
-            IPWLMod.LOGGER.warn("[IPWL SECURITY] Blocked duplicate connection attempt for {} from {}", username, ip);
-            disconnect(IPWLMod.disconnectMessage("§cYou are already connected to this server!"));
+            IPWLMod.LOGGER.warn("[IPWL SECURITY] Blocked duplicate login for {} from {}", username, ip);
+            disconnect(Component.literal(IPWLMessages.get("ipwl.disconnect.duplicate")));
             ci.cancel();
             return;
         }
 
+        // 7. Whitelist check
         WhitelistManager.WhitelistResult result = IPWLMod.getWhitelistManager().checkPlayerIp(username, ip);
-
         if (!result.allowed) {
             security.recordBlockedConnection();
             if (IPWLMod.getConfig().isLogAllAttempts() || IPWLMod.getConfig().isVerboseLogging()) {
-                IPWLMod.LOGGER.warn("[IPWL SECURITY] Blocked connection for {} from {}: {}", username, ip, result.reason);
+                IPWLMod.LOGGER.warn("[IPWL SECURITY] Blocked {} from {}: {}", username, ip, result.reason);
             }
-            disconnect(IPWLMod.disconnectMessage("§cYou are not whitelisted on this server!"));
+            AlertManager.getInstance().fireAlert(username, ip);
+            disconnect(Component.literal(IPWLMessages.get("ipwl.disconnect.not_whitelisted")));
             ci.cancel();
             return;
         }
 
+        // 8. Max connections per IP
         if (!security.addConnection(ip)) {
             security.recordBlockedConnection();
-            IPWLMod.LOGGER.warn("[IPWL SECURITY] Blocked connection for {} from {}: Max connections reached", username, ip);
-            disconnect(IPWLMod.disconnectMessage("§cToo many accounts connected from your IP address."));
+            IPWLMod.LOGGER.warn("[IPWL SECURITY] Max connections reached for {} from {}", username, ip);
+            disconnect(Component.literal(IPWLMessages.get("ipwl.disconnect.max_connections")));
             ci.cancel();
             return;
         }
@@ -109,26 +126,23 @@ public abstract class ServerLoginNetworkHandlerMixin {
     @Unique
     private String ipwl$getIpAddress() {
         try {
-            if (connection.getRemoteAddress() instanceof InetSocketAddress inetAddress) {
-                return inetAddress.getAddress().getHostAddress();
+            if (connection.getRemoteAddress() instanceof InetSocketAddress addr) {
+                return addr.getAddress().getHostAddress();
             }
         } catch (Exception e) {
-            IPWLMod.LOGGER.warn("Failed to get player IP address: {}", e.getMessage());
+            IPWLMod.LOGGER.warn("[IPWL] Failed to get player IP: {}", e.getMessage());
         }
         return "unknown";
     }
 
     @Unique
-    private boolean isPlayerAlreadyOnline(String username) {
+    private boolean ipwl$isPlayerAlreadyOnline(String username) {
         try {
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-                if (player.getName().getString().equals(username)) {
-                    return true;
-                }
+                if (player.getName().getString().equals(username)) return true;
             }
         } catch (Exception e) {
-            IPWLMod.LOGGER.warn("Error checking online players: {}", e.getMessage());
-            return false;
+            IPWLMod.LOGGER.warn("[IPWL] Error checking online players: {}", e.getMessage());
         }
         return false;
     }

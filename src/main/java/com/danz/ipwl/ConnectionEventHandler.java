@@ -1,6 +1,7 @@
 package com.danz.ipwl.events;
 
 import com.danz.ipwl.IPWLMod;
+import com.danz.ipwl.config.IPWLMessages;
 import com.danz.ipwl.manager.WhitelistManager;
 import com.danz.ipwl.commands.SecurityCommands;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
@@ -41,7 +42,7 @@ public class ConnectionEventHandler {
                     server.execute(() -> {
                         if (player.connection != null) {
                             player.connection.disconnect(
-                                Component.literal("§cSecurity verification failed. Please contact an administrator.")
+                                Component.literal(IPWLMessages.get("ipwl.disconnect.security_failed"))
                             );
                             IPWLMod.LOGGER.warn("[IPWL SECURITY] Kicked {} due to verification failure", username);
                         }

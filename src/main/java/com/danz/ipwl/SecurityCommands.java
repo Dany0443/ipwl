@@ -1,134 +1,184 @@
 package com.danz.ipwl.commands;
 
 import com.danz.ipwl.IPWLMod;
-import com.danz.ipwl.manager.SecurityManager;
+import com.danz.ipwl.config.IPWLMessages;
+import com.google.gson.*;
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
+import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.commands.Commands;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerPlayer;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.io.*;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Registers /seen, /connections, and /security status commands, and tracks
+ * per-player last-seen data (written to config/ipwl-seen.json).
+ *
+ * <p>Called from:
+ * <ul>
+ *   <li>{@link IPWLMod} — {@code SecurityCommands.register(dispatcher)}</li>
+ *   <li>{@link com.danz.ipwl.events.ConnectionEventHandler} —
+ *       {@code updatePlayerSeen} / {@code updatePlayerLeft}</li>
+ * </ul>
+ */
 public class SecurityCommands {
 
-    private static final Map<String, PlayerSeenData> lastSeenData = new HashMap<>();
-    // username -> join timestamp (only present while online)
-    private static final Map<String, Long> joinTimes = new HashMap<>();
-    // ip -> join timestamp for /connections
-    private static final Map<String, ConnectionData> activeConnections = new LinkedHashMap<>();
+    /** username (lowercase) → last-seen record */
+    private static final Map<String, PlayerRecord> seenData = new ConcurrentHashMap<>();
 
-    // Called by WhitelistCommands — no dispatcher registration needed here
+    private static final File SEEN_FILE =
+            FabricLoader.getInstance().getConfigDir().resolve("ipwl-seen.json").toFile();
+
+    private static final DateTimeFormatter FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
+
+    // -------------------------------------------------------------------------
+    // Registration
+    // -------------------------------------------------------------------------
+
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-        // All commands are registered in WhitelistCommands.register().
-        // This method is kept for compatibility with IPWLMod's registration call.
+        loadSeenData();
+
+        // /seen <player>
+        dispatcher.register(Commands.literal("seen")
+            .requires(IPWLMod::hasPermission)
+            .then(Commands.argument("player", StringArgumentType.word())
+                .executes(ctx -> handleSeen(
+                    ctx.getSource(),
+                    StringArgumentType.getString(ctx, "player"))))
+        );
+
+        // /connections
+        dispatcher.register(Commands.literal("connections")
+            .requires(IPWLMod::hasPermission)
+            .executes(SecurityCommands::handleConnections)
+        );
+
+        // /security status
+        dispatcher.register(Commands.literal("security")
+            .requires(IPWLMod::hasPermission)
+            .then(Commands.literal("status")
+                .executes(SecurityCommands::handleSecurityStatus))
+        );
     }
 
     // -------------------------------------------------------------------------
-    // /seen <player>
+    // Command handlers
     // -------------------------------------------------------------------------
-    public static int handleSeen(CommandSourceStack source, String username) {
-        if (joinTimes.containsKey(username)) {
-            long joinTime = joinTimes.get(username);
-            String uptime = formatDuration(System.currentTimeMillis() - joinTime);
-            PlayerSeenData data = lastSeenData.get(username.toLowerCase());
-            String ip = data != null ? data.lastIp : "unknown";
 
+    public static int handleSeen(CommandSourceStack source, String playerName) {
+        PlayerRecord record = seenData.get(playerName.toLowerCase());
+        if (record == null) {
             IPWLMod.sendFeedback(source,
-                String.format("§a%s §7is currently §2online §7from §f%s §7(session: %s)", username, ip, uptime));
-            return 1;
-        }
-
-        PlayerSeenData data = lastSeenData.get(username.toLowerCase());
-        if (data == null) {
-            IPWLMod.sendFeedback(source, "§cNo record found for §f" + username + "§c.");
+                IPWLMessages.fmt("ipwl.seen.never", playerName));
             return 0;
         }
-
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        String dateStr = sdf.format(new Date(data.lastSeen));
-        String timeAgo = formatDuration(System.currentTimeMillis() - data.lastSeen);
-
+        String timestamp = FORMATTER.format(Instant.ofEpochMilli(record.lastSeen()));
+        String status = record.online()
+            ? IPWLMessages.get("ipwl.seen.currently_online")
+            : IPWLMessages.fmt("ipwl.seen.last_seen", timestamp);
         IPWLMod.sendFeedback(source,
-            String.format("§f%s §7was last seen §e%s §7(%s ago) from IP §f%s",
-                username, dateStr, timeAgo, data.lastIp));
+            IPWLMessages.fmt("ipwl.seen.result", playerName, record.ip(), status));
+        return 1;
+    }
+
+    public static int handleConnections(CommandContext<CommandSourceStack> ctx) {
+        var server = IPWLMod.getServer();
+        if (server == null) {
+            IPWLMod.sendFeedback(ctx.getSource(),
+                IPWLMessages.get("ipwl.cmd.security_not_ready"));
+            return 0;
+        }
+        var players = server.getPlayerList().getPlayers();
+        IPWLMod.sendFeedback(ctx.getSource(),
+            IPWLMessages.fmt("ipwl.connections.count", players.size()));
+        players.forEach(p -> {
+            String ip = WhitelistCommands.getPlayerIp(p);
+            IPWLMod.sendFeedback(ctx.getSource(),
+                IPWLMessages.fmt("ipwl.connections.entry", p.getName().getString(), ip));
+        });
+        return 1;
+    }
+
+    public static int handleSecurityStatus(CommandContext<CommandSourceStack> ctx) {
+        var security = IPWLMod.getSecurityManager();
+        if (security == null) {
+            IPWLMod.sendFeedback(ctx.getSource(),
+                IPWLMessages.get("ipwl.cmd.security_not_ready"));
+            return 0;
+        }
+        for (Component line : security.getStatus()) {
+            ctx.getSource().sendSuccess(() -> line, false);
+        }
         return 1;
     }
 
     // -------------------------------------------------------------------------
-    // /connections
+    // Player tracking — called by ConnectionEventHandler
     // -------------------------------------------------------------------------
-    public static int handleConnections(CommandContext<CommandSourceStack> context) {
-        CommandSourceStack source = context.getSource();
 
-        if (activeConnections.isEmpty()) {
-            IPWLMod.sendFeedback(source, "§7No active connections tracked.");
-            return 1;
-        }
-
-        IPWLMod.sendFeedback(source, "§6=== Active Connections ===");
-        long now = System.currentTimeMillis();
-        for (Map.Entry<String, ConnectionData> entry : activeConnections.entrySet()) {
-            String username = entry.getKey();
-            ConnectionData conn = entry.getValue();
-            String uptime = formatDuration(now - conn.joinTime);
-            IPWLMod.sendFeedback(source,
-                String.format("§a%s §7— §f%s §7(online %s)", username, conn.ip, uptime));
-        }
-        IPWLMod.sendFeedback(source,
-            String.format("§7Total: §f%d §7player(s) online.", activeConnections.size()));
-        return 1;
-    }
-
-    // -------------------------------------------------------------------------
-    // Called from ConnectionEventHandler
-    // -------------------------------------------------------------------------
     public static void updatePlayerSeen(String username, String ip) {
-        lastSeenData.put(username.toLowerCase(), new PlayerSeenData(System.currentTimeMillis(), ip));
-        joinTimes.put(username, System.currentTimeMillis());
-        activeConnections.put(username, new ConnectionData(ip, System.currentTimeMillis()));
+        seenData.put(username.toLowerCase(),
+            new PlayerRecord(username, ip, System.currentTimeMillis(), true));
+        saveSeenData();
     }
 
     public static void updatePlayerLeft(String username, String ip) {
-        lastSeenData.put(username.toLowerCase(), new PlayerSeenData(System.currentTimeMillis(), ip));
-        joinTimes.remove(username);
-        activeConnections.remove(username);
+        // Update last-seen time and mark offline
+        seenData.put(username.toLowerCase(),
+            new PlayerRecord(username, ip, System.currentTimeMillis(), false));
+        saveSeenData();
     }
 
     // -------------------------------------------------------------------------
-    // Helpers
+    // Persistence
     // -------------------------------------------------------------------------
-    private static String formatDuration(long ms) {
-        long seconds = ms / 1000;
-        long minutes = seconds / 60;
-        long hours = minutes / 60;
-        long days = hours / 24;
 
-        if (days > 0)         return days    + " day"    + (days    != 1 ? "s" : "");
-        else if (hours > 0)   return hours   + " hour"   + (hours   != 1 ? "s" : "");
-        else if (minutes > 0) return minutes + " minute" + (minutes != 1 ? "s" : "");
-        else                  return seconds + " second" + (seconds != 1 ? "s" : "");
-    }
-
-    private static class PlayerSeenData {
-        public final long lastSeen;
-        public final String lastIp;
-        PlayerSeenData(long lastSeen, String lastIp) {
-            this.lastSeen = lastSeen;
-            this.lastIp = lastIp;
+    private static void loadSeenData() {
+        if (!SEEN_FILE.exists()) return;
+        try (FileReader reader = new FileReader(SEEN_FILE)) {
+            JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
+            for (Map.Entry<String, JsonElement> entry : json.entrySet()) {
+                JsonObject obj = entry.getValue().getAsJsonObject();
+                seenData.put(entry.getKey(), new PlayerRecord(
+                    obj.get("username").getAsString(),
+                    obj.get("ip").getAsString(),
+                    obj.get("lastSeen").getAsLong(),
+                    false // treat as offline on startup
+                ));
+            }
+            IPWLMod.LOGGER.info("[IPWL] Loaded seen data for {} players", seenData.size());
+        } catch (Exception e) {
+            IPWLMod.LOGGER.error("[IPWL] Failed to load seen data: {}", e.getMessage());
         }
     }
 
-    private static class ConnectionData {
-        public final String ip;
-        public final long joinTime;
-        ConnectionData(String ip, long joinTime) {
-            this.ip = ip;
-            this.joinTime = joinTime;
+    private static void saveSeenData() {
+        try (FileWriter writer = new FileWriter(SEEN_FILE)) {
+            JsonObject json = new JsonObject();
+            seenData.forEach((key, r) -> {
+                JsonObject obj = new JsonObject();
+                obj.addProperty("username", r.username());
+                obj.addProperty("ip",       r.ip());
+                obj.addProperty("lastSeen", r.lastSeen());
+                obj.addProperty("online",   r.online());
+                json.add(key, obj);
+            });
+            new GsonBuilder().setPrettyPrinting().create().toJson(json, writer);
+        } catch (Exception e) {
+            IPWLMod.LOGGER.error("[IPWL] Failed to save seen data: {}", e.getMessage());
         }
     }
+
+    // -------------------------------------------------------------------------
+
+    private record PlayerRecord(String username, String ip, long lastSeen, boolean online) {}
 }
