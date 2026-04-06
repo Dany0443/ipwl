@@ -8,7 +8,7 @@ A server-side mod that adds a second security layer on top of Mojang authenticat
 
 ## Installation
 
-1. Drop the `.jar` into your server's `mods/` folder.
+1. Drop the `.jar` into your server `mods/` folder.
 2. Start the server. The mod creates `config/ipwl.json` automatically.
 3. Add yourself as an IPWL admin (see below) and start managing players.
 
