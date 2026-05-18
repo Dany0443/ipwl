@@ -1,6 +1,6 @@
 # IPWL — IP-Based Whitelist for Minecraft (Fabric)
 
-**Minecraft:** 26.1 &nbsp;|&nbsp; **Loader:** Fabric &nbsp;|&nbsp; **Java:** 25 &nbsp;|&nbsp; **License:** MIT
+**Minecraft:** 1.21.1-26.1 &nbsp;|&nbsp; **Loader:** Fabric &nbsp;|&nbsp; **Java:** 25 &nbsp;|&nbsp; **License:** MIT
 
 A server-side mod that adds a second security layer on top of Mojang authentication. Every player is bound to one or more approved IP addresses, even if someone has a valid account, they cannot join unless they are connecting from a pre-approved IP. Connections are blocked before authentication even completes, so rejected players consume minimal server resources.
 
