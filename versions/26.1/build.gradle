@@ -1,0 +1,50 @@
+plugins {
+    id 'net.fabricmc.fabric-loom-remap' version '1.15-SNAPSHOT'
+    id 'maven-publish'
+}
+
+group = 'com.danz'
+version = '1.5.3'
+
+repositories {
+    maven { url 'https://maven.fabricmc.net/' }
+    maven { url 'https://maven.relativitymc.net/releases/' }
+    mavenCentral()
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${minecraft_version}"
+    mappings "net.fabricmc:yarn:${yarn_mappings}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+    withSourcesJar()
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = 25
+}
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+}
+
+def mcArtifactTag = "mc${minecraft_version}"
+
+tasks.named("remapJar") {
+    archiveFileName = "${project.name}-${project.version}-${mcArtifactTag}.jar"
+}
+
+tasks.named("remapSourcesJar") {
+    archiveFileName = "${project.name}-${project.version}-${mcArtifactTag}-sources.jar"
+}
