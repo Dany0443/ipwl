@@ -2,6 +2,7 @@ package com.danz.ipwl.manager;
 
 import com.danz.ipwl.IPWLMod;
 import com.danz.ipwl.config.IPWLMessages;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.*;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -69,6 +70,7 @@ public final class AlertManager {
         String acceptCmd = IPWLMessages.fmt("ipwl.alert.cmd_accept", username, ip);
         MutableComponent accept = Component.literal(IPWLMessages.get("ipwl.alert.btn_accept"))
             .withStyle(style -> style
+                .withColor(ChatFormatting.GREEN)
                 .withClickEvent(new ClickEvent.RunCommand(acceptCmd))
                 .withHoverEvent(new HoverEvent.ShowText(
                     Component.literal(IPWLMessages.fmt("ipwl.alert.hover_accept", username, ip)))));
@@ -76,6 +78,7 @@ public final class AlertManager {
         String banCmd = IPWLMessages.fmt("ipwl.alert.cmd_ban", ip);
         MutableComponent ban = Component.literal(IPWLMessages.get("ipwl.alert.btn_ban"))
             .withStyle(style -> style
+                .withColor(ChatFormatting.RED)
                 .withClickEvent(new ClickEvent.RunCommand(banCmd))
                 .withHoverEvent(new HoverEvent.ShowText(
                     Component.literal(IPWLMessages.fmt("ipwl.alert.hover_ban", ip)))));
