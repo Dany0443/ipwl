@@ -2,11 +2,11 @@ package com.danz.ipwl.manager;
 
 import com.danz.ipwl.IPWLMod;
 import com.danz.ipwl.config.IPWLMessages;
-import net.minecraft.text.ClickEvent;
-import net.minecraft.text.HoverEvent;
-import net.minecraft.text.MutableText;
-import net.minecraft.text.Text;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -42,7 +42,7 @@ public final class AlertManager {
         lastAlertTime.put(ip, now);
 
         logConsoleBanner(username, ip);
-        Text alert = buildAlertComponent(username, ip);
+        Component alert = buildAlertComponent(username, ip);
         var server = IPWLMod.getServer();
         if (server != null) {
             // onHello runs on a login/network thread; marshal chat send to the
@@ -73,36 +73,38 @@ public final class AlertManager {
     // In-game clickable alert
     // -------------------------------------------------------------------------
 
-    private static Text buildAlertComponent(String username, String ip) {
-        MutableText base = Text.literal(
+    private static Component buildAlertComponent(String username, String ip) {
+        MutableComponent base = Component.literal(
             IPWLMessages.fmt("ipwl.alert.base", username, ip));
 
         String acceptCmd = IPWLMessages.fmt("ipwl.alert.cmd_accept", username, ip);
-        MutableText accept = Text.literal(IPWLMessages.get("ipwl.alert.btn_accept"))
-            .styled(style -> style
+        MutableComponent accept = Component.literal(IPWLMessages.get("ipwl.alert.btn_accept"))
+            .withStyle(style -> style
                 .withClickEvent(new ClickEvent.RunCommand(acceptCmd))
-                .withHoverEvent(new HoverEvent.ShowText(Text.literal(IPWLMessages.fmt("ipwl.alert.hover_accept", username, ip)))));
+                .withHoverEvent(new HoverEvent.ShowText(
+                    Component.literal(IPWLMessages.fmt("ipwl.alert.hover_accept", username, ip)))));
 
         String banCmd = IPWLMessages.fmt("ipwl.alert.cmd_ban", ip);
-        MutableText ban = Text.literal(IPWLMessages.get("ipwl.alert.btn_ban"))
-            .styled(style -> style
+        MutableComponent ban = Component.literal(IPWLMessages.get("ipwl.alert.btn_ban"))
+            .withStyle(style -> style
                 .withClickEvent(new ClickEvent.RunCommand(banCmd))
-                .withHoverEvent(new HoverEvent.ShowText(Text.literal(IPWLMessages.fmt("ipwl.alert.hover_ban", ip)))));
+                .withHoverEvent(new HoverEvent.ShowText(
+                    Component.literal(IPWLMessages.fmt("ipwl.alert.hover_ban", ip)))));
 
         return base.append(accept).append(ban);
     }
 
     // -------------------------------------------------------------------------
 
-    private static void sendToAdmins(Text msg, String username, String ip) {
+    private static void sendToAdmins(Component msg, String username, String ip) {
         var server = IPWLMod.getServer();
         if (server == null) return;
-        var playerManager = server.getPlayerManager();
+        var playerManager = server.getPlayerList();
         if (playerManager == null) return;
         int delivered = 0;
-        for (ServerPlayerEntity player : playerManager.getPlayerList()) {
-            if (IPWLMod.hasPermission(player.getCommandSource())) {
-                player.sendMessage(msg);
+        for (ServerPlayer player : playerManager.getPlayers()) {
+            if (IPWLMod.hasPermission(player.createCommandSourceStack())) {
+                player.sendSystemMessage(msg);
                 delivered++;
             }
         }

@@ -7,9 +7,9 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.server.command.CommandManager;
-import net.minecraft.server.command.ServerCommandSource;
-import net.minecraft.text.Text;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
+import net.minecraft.network.chat.Component;
 
 import java.io.*;
 import java.time.Instant;
@@ -44,28 +44,28 @@ public class SecurityCommands {
     // Registration
     // -------------------------------------------------------------------------
 
-    public static void register(CommandDispatcher<ServerCommandSource> dispatcher) {
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         loadSeenData();
 
         // /seen <player>
-        dispatcher.register(CommandManager.literal("seen")
+        dispatcher.register(Commands.literal("seen")
             .requires(IPWLMod::hasPermission)
-            .then(CommandManager.argument("player", StringArgumentType.word())
+            .then(Commands.argument("player", StringArgumentType.word())
                 .executes(ctx -> handleSeen(
                     ctx.getSource(),
                     StringArgumentType.getString(ctx, "player"))))
         );
 
         // /connections
-        dispatcher.register(CommandManager.literal("connections")
+        dispatcher.register(Commands.literal("connections")
             .requires(IPWLMod::hasPermission)
             .executes(SecurityCommands::handleConnections)
         );
 
         // /security status
-        dispatcher.register(CommandManager.literal("security")
+        dispatcher.register(Commands.literal("security")
             .requires(IPWLMod::hasPermission)
-            .then(CommandManager.literal("status")
+            .then(Commands.literal("status")
                 .executes(SecurityCommands::handleSecurityStatus))
         );
     }
@@ -74,7 +74,7 @@ public class SecurityCommands {
     // Command handlers
     // -------------------------------------------------------------------------
 
-    public static int handleSeen(ServerCommandSource source, String playerName) {
+    public static int handleSeen(CommandSourceStack source, String playerName) {
         PlayerRecord record = seenData.get(playerName.toLowerCase());
         if (record == null) {
             IPWLMod.sendFeedback(source,
@@ -90,14 +90,14 @@ public class SecurityCommands {
         return 1;
     }
 
-    public static int handleConnections(CommandContext<ServerCommandSource> ctx) {
+    public static int handleConnections(CommandContext<CommandSourceStack> ctx) {
         var server = IPWLMod.getServer();
         if (server == null) {
             IPWLMod.sendFeedback(ctx.getSource(),
                 IPWLMessages.get("ipwl.cmd.security_not_ready"));
             return 0;
         }
-        var players = server.getPlayerManager().getPlayerList();
+        var players = server.getPlayerList().getPlayers();
         IPWLMod.sendFeedback(ctx.getSource(),
             IPWLMessages.fmt("ipwl.connections.count", players.size()));
         players.forEach(p -> {
@@ -108,15 +108,15 @@ public class SecurityCommands {
         return 1;
     }
 
-    public static int handleSecurityStatus(CommandContext<ServerCommandSource> ctx) {
+    public static int handleSecurityStatus(CommandContext<CommandSourceStack> ctx) {
         var security = IPWLMod.getSecurityManager();
         if (security == null) {
             IPWLMod.sendFeedback(ctx.getSource(),
                 IPWLMessages.get("ipwl.cmd.security_not_ready"));
             return 0;
         }
-        for (Text line : security.getStatus()) {
-            ctx.getSource().sendFeedback(() -> line, false);
+        for (Component line : security.getStatus()) {
+            IPWLMod.sendFeedback(ctx.getSource(), line);
         }
         return 1;
     }

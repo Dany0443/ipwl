@@ -6,10 +6,10 @@ import com.danz.ipwl.manager.SecurityManager;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
-import net.minecraft.server.command.CommandManager;
-import net.minecraft.server.command.ServerCommandSource;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Text;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.Component;
 
 import java.net.InetSocketAddress;
 import java.util.Set;
@@ -23,89 +23,89 @@ import java.util.concurrent.TimeUnit;
  */
 public class WhitelistCommands {
 
-    public static void register(CommandDispatcher<ServerCommandSource> dispatcher) {
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
 
-        dispatcher.register(CommandManager.literal("ipwl")
+        dispatcher.register(Commands.literal("ipwl")
             .requires(IPWLMod::hasPermission)
 
             // /ipwl add <player> [ip]
-            .then(CommandManager.literal("add")
-                .then(CommandManager.argument("player", StringArgumentType.word())
+            .then(Commands.literal("add")
+                .then(Commands.argument("player", StringArgumentType.word())
                     .executes(ctx -> addPlayer(ctx, "*"))
-                    .then(CommandManager.argument("ip", StringArgumentType.greedyString())
+                    .then(Commands.argument("ip", StringArgumentType.greedyString())
                         .executes(ctx -> addPlayer(ctx,
                             StringArgumentType.getString(ctx, "ip"))))))
 
             // /ipwl remove <player>
-            .then(CommandManager.literal("remove")
-                .then(CommandManager.argument("player", StringArgumentType.word())
+            .then(Commands.literal("remove")
+                .then(Commands.argument("player", StringArgumentType.word())
                     .executes(WhitelistCommands::removePlayer)))
 
             // /ipwl list
-            .then(CommandManager.literal("list")
+            .then(Commands.literal("list")
                 .executes(WhitelistCommands::listWhitelist))
 
             // /ipwl reload
-            .then(CommandManager.literal("reload")
+            .then(Commands.literal("reload")
                 .executes(WhitelistCommands::reloadConfig))
 
             // /ipwl addip <player> <ip>
-            .then(CommandManager.literal("addip")
-                .then(CommandManager.argument("player", StringArgumentType.word())
-                    .then(CommandManager.argument("ip", StringArgumentType.string())
+            .then(Commands.literal("addip")
+                .then(Commands.argument("player", StringArgumentType.word())
+                    .then(Commands.argument("ip", StringArgumentType.string())
                         .executes(WhitelistCommands::addIpToPlayer))))
 
             // /ipwl removeip <player> <ip>
-            .then(CommandManager.literal("removeip")
-                .then(CommandManager.argument("player", StringArgumentType.word())
-                    .then(CommandManager.argument("ip", StringArgumentType.string())
+            .then(Commands.literal("removeip")
+                .then(Commands.argument("player", StringArgumentType.word())
+                    .then(Commands.argument("ip", StringArgumentType.string())
                         .executes(WhitelistCommands::removeIpFromPlayer))))
 
             // /ipwl tempadd <player> <ip> <duration>
             // duration examples: 30m  2h  1d  3600s
-            .then(CommandManager.literal("tempadd")
-                .then(CommandManager.argument("player", StringArgumentType.word())
-                    .then(CommandManager.argument("ip", StringArgumentType.string())
-                        .then(CommandManager.argument("duration", StringArgumentType.word())
+            .then(Commands.literal("tempadd")
+                .then(Commands.argument("player", StringArgumentType.word())
+                    .then(Commands.argument("ip", StringArgumentType.string())
+                        .then(Commands.argument("duration", StringArgumentType.word())
                             .executes(WhitelistCommands::tempAddPlayer)))))
 
             // /ipwl banip <ip>  |  /ipwl banip list
-            .then(CommandManager.literal("banip")
-                .then(CommandManager.literal("list")
+            .then(Commands.literal("banip")
+                .then(Commands.literal("list")
                     .executes(WhitelistCommands::listBannedIps))
-                .then(CommandManager.argument("ip", StringArgumentType.word())
+                .then(Commands.argument("ip", StringArgumentType.word())
                     .executes(WhitelistCommands::banIp)))
 
             // /ipwl unbanip <ip>
-            .then(CommandManager.literal("unbanip")
-                .then(CommandManager.argument("ip", StringArgumentType.word())
+            .then(Commands.literal("unbanip")
+                .then(Commands.argument("ip", StringArgumentType.word())
                     .executes(WhitelistCommands::unbanIp)))
 
             // /ipwl admin add|remove|list
-            .then(CommandManager.literal("admin")
-                .then(CommandManager.literal("add")
-                    .then(CommandManager.argument("username", StringArgumentType.word())
+            .then(Commands.literal("admin")
+                .then(Commands.literal("add")
+                    .then(Commands.argument("username", StringArgumentType.word())
                         .executes(ctx -> modifyAdmin(ctx, true))))
-                .then(CommandManager.literal("remove")
-                    .then(CommandManager.argument("username", StringArgumentType.word())
+                .then(Commands.literal("remove")
+                    .then(Commands.argument("username", StringArgumentType.word())
                         .executes(ctx -> modifyAdmin(ctx, false))))
-                .then(CommandManager.literal("list")
+                .then(Commands.literal("list")
                     .executes(WhitelistCommands::listAdmins)))
 
             // /ipwl logs verbose|silent
-            .then(CommandManager.literal("logs")
-                .then(CommandManager.literal("verbose")
+            .then(Commands.literal("logs")
+                .then(Commands.literal("verbose")
                     .executes(ctx -> setLogging(ctx, true)))
-                .then(CommandManager.literal("silent")
+                .then(Commands.literal("silent")
                     .executes(ctx -> setLogging(ctx, false))))
         );
 
         // /lockdown on|off
-        dispatcher.register(CommandManager.literal("lockdown")
+        dispatcher.register(Commands.literal("lockdown")
             .requires(IPWLMod::hasPermission)
-            .then(CommandManager.literal("on")
+            .then(Commands.literal("on")
                 .executes(ctx -> setLockdown(ctx, true)))
-            .then(CommandManager.literal("off")
+            .then(Commands.literal("off")
                 .executes(ctx -> setLockdown(ctx, false)))
         );
 
@@ -116,7 +116,7 @@ public class WhitelistCommands {
     // Whitelist mutation
     // -------------------------------------------------------------------------
 
-    private static int addPlayer(CommandContext<ServerCommandSource> ctx, String ip) {
+    private static int addPlayer(CommandContext<CommandSourceStack> ctx, String ip) {
         String playerName = StringArgumentType.getString(ctx, "player");
         if (ip == null || ip.isBlank()) ip = "*";
         IPWLMod.getWhitelistManager().addPlayer(playerName, ip);
@@ -130,7 +130,7 @@ public class WhitelistCommands {
         return 1;
     }
 
-    private static int removePlayer(CommandContext<ServerCommandSource> ctx) {
+    private static int removePlayer(CommandContext<CommandSourceStack> ctx) {
         String playerName = StringArgumentType.getString(ctx, "player");
         if (!IPWLMod.getWhitelistManager().hasPlayer(playerName)) {
             IPWLMod.sendFeedback(ctx.getSource(), IPWLMessages.fmt("ipwl.cmd.not_whitelisted", playerName));
@@ -138,33 +138,33 @@ public class WhitelistCommands {
         }
         IPWLMod.getWhitelistManager().removePlayer(playerName);
         IPWLMod.sendFeedback(ctx.getSource(), IPWLMessages.fmt("ipwl.cmd.remove", playerName));
-        broadcastToAdmins(ctx.getSource(), IPWLMessages.fmt("ipwl.cmd.remove_broadcast", playerName, ctx.getSource().getName()));
+        broadcastToAdmins(ctx.getSource(), IPWLMessages.fmt("ipwl.cmd.remove_broadcast", playerName, ctx.getSource().getTextName()));
         // Always kick immediately
-        var playerManager = ctx.getSource().getServer().getPlayerManager();
+        var playerManager = ctx.getSource().getServer().getPlayerList();
         if (playerManager != null) {
-            ServerPlayerEntity target = playerManager.getPlayer(playerName);
+            ServerPlayer target = playerManager.getPlayerByName(playerName);
             if (target != null) {
-                target.networkHandler.disconnect(Text.literal(IPWLMessages.get("ipwl.disconnect.removed")));
+                target.connection.disconnect(Component.literal(IPWLMessages.get("ipwl.disconnect.removed")));
             }
         }
         return 1;
     }
 
-    private static int listWhitelist(CommandContext<ServerCommandSource> ctx) {
-        for (Text line : IPWLMod.getWhitelistManager().getFormattedList()) {
-            ctx.getSource().sendFeedback(() -> line, false);
+    private static int listWhitelist(CommandContext<CommandSourceStack> ctx) {
+        for (Component line : IPWLMod.getWhitelistManager().getFormattedList()) {
+            IPWLMod.sendFeedback(ctx.getSource(), line);
         }
         return 1;
     }
 
-    private static int reloadConfig(CommandContext<ServerCommandSource> ctx) {
+    private static int reloadConfig(CommandContext<CommandSourceStack> ctx) {
         IPWLMod.reloadConfig();
         IPWLMod.getWhitelistManager().reload();
         IPWLMod.sendFeedback(ctx.getSource(), IPWLMessages.get("ipwl.cmd.reload"));
         return 1;
     }
 
-    private static int addIpToPlayer(CommandContext<ServerCommandSource> ctx) {
+    private static int addIpToPlayer(CommandContext<CommandSourceStack> ctx) {
         String playerName = StringArgumentType.getString(ctx, "player");
         String ip         = StringArgumentType.getString(ctx, "ip");
         if (!IPWLMod.getWhitelistManager().hasPlayer(playerName)) {
@@ -176,7 +176,7 @@ public class WhitelistCommands {
         return 1;
     }
 
-    private static int removeIpFromPlayer(CommandContext<ServerCommandSource> ctx) {
+    private static int removeIpFromPlayer(CommandContext<CommandSourceStack> ctx) {
         String playerName = StringArgumentType.getString(ctx, "player");
         String ip         = StringArgumentType.getString(ctx, "ip");
         if (!IPWLMod.getWhitelistManager().getPlayerIps(playerName).contains(ip)) {
@@ -192,7 +192,7 @@ public class WhitelistCommands {
     // Temporary approval
     // -------------------------------------------------------------------------
 
-    private static int tempAddPlayer(CommandContext<ServerCommandSource> ctx) {
+    private static int tempAddPlayer(CommandContext<CommandSourceStack> ctx) {
         String playerName  = StringArgumentType.getString(ctx, "player");
         String ip          = StringArgumentType.getString(ctx, "ip");
         String durationStr = StringArgumentType.getString(ctx, "duration");
@@ -239,7 +239,7 @@ public class WhitelistCommands {
     // Permanent IP bans
     // -------------------------------------------------------------------------
 
-    private static int banIp(CommandContext<ServerCommandSource> ctx) {
+    private static int banIp(CommandContext<CommandSourceStack> ctx) {
         String ip = StringArgumentType.getString(ctx, "ip");
         if (IPWLMod.getConfig().isBannedIp(ip)) {
             IPWLMod.sendFeedback(ctx.getSource(), IPWLMessages.fmt("ipwl.cmd.banip_already", ip));
@@ -248,11 +248,11 @@ public class WhitelistCommands {
         IPWLMod.getConfig().banIp(ip);
         kickByIp(ip);
         IPWLMod.sendFeedback(ctx.getSource(), IPWLMessages.fmt("ipwl.cmd.banip", ip));
-        broadcastToAdmins(ctx.getSource(), IPWLMessages.fmt("ipwl.cmd.ban_broadcast", ip, ctx.getSource().getName()));
+        broadcastToAdmins(ctx.getSource(), IPWLMessages.fmt("ipwl.cmd.ban_broadcast", ip, ctx.getSource().getTextName()));
         return 1;
     }
 
-    private static int unbanIp(CommandContext<ServerCommandSource> ctx) {
+    private static int unbanIp(CommandContext<CommandSourceStack> ctx) {
         String ip = StringArgumentType.getString(ctx, "ip");
         if (!IPWLMod.getConfig().isBannedIp(ip)) {
             IPWLMod.sendFeedback(ctx.getSource(), IPWLMessages.fmt("ipwl.cmd.unbanip_notfound", ip));
@@ -263,7 +263,7 @@ public class WhitelistCommands {
         return 1;
     }
 
-    private static int listBannedIps(CommandContext<ServerCommandSource> ctx) {
+    private static int listBannedIps(CommandContext<CommandSourceStack> ctx) {
         Set<String> banned = IPWLMod.getConfig().getBannedIps();
         if (banned.isEmpty()) {
             IPWLMod.sendFeedback(ctx.getSource(), IPWLMessages.get("ipwl.cmd.banip_list_empty"));
@@ -279,12 +279,12 @@ public class WhitelistCommands {
     private static void kickByIp(String targetIp) {
         var server = IPWLMod.getServer();
         if (server == null) return;
-        var playerManager = server.getPlayerManager();
+        var playerManager = server.getPlayerList();
         if (playerManager == null) return;
-        for (ServerPlayerEntity player : playerManager.getPlayerList()) {
+        for (ServerPlayer player : playerManager.getPlayers()) {
             if (targetIp.equals(getPlayerIp(player))) {
-                player.networkHandler.disconnect(
-                    Text.literal(IPWLMessages.get("ipwl.disconnect.temp_banned")));
+                player.connection.disconnect(
+                    Component.literal(IPWLMessages.get("ipwl.disconnect.temp_banned")));
             }
         }
     }
@@ -293,7 +293,7 @@ public class WhitelistCommands {
     // Admin / logging / lockdown
     // -------------------------------------------------------------------------
 
-    private static int modifyAdmin(CommandContext<ServerCommandSource> ctx, boolean add) {
+    private static int modifyAdmin(CommandContext<CommandSourceStack> ctx, boolean add) {
         String username = StringArgumentType.getString(ctx, "username");
         if (add) {
             IPWLMod.getConfig().addAdmin(username);
@@ -306,18 +306,16 @@ public class WhitelistCommands {
             // they stay connected, they just lose admin commands.
             var server = IPWLMod.getServer();
             if (server != null) {
-                var playerManager = server.getPlayerManager();
+                var playerManager = server.getPlayerList();
                 if (playerManager == null) return 1;
-                ServerPlayerEntity target = playerManager.getPlayer(username);
+                ServerPlayer target = playerManager.getPlayerByName(username);
                 if (target != null) {
                     if (!IPWLMod.getWhitelistManager().hasPlayer(username)) {
                         // Not whitelisted either - kick them off entirely
-                        target.networkHandler.disconnect(
-                            Text.literal(IPWLMessages.get("ipwl.disconnect.removed")));
+                        target.connection.disconnect(
+                            Component.literal(IPWLMessages.get("ipwl.disconnect.removed")));
                     } else {
-                        // Still whitelisted - stay connected but push a refreshed command
-                        // tree so /ipwl disappears from their tab-complete immediately.
-                        playerManager.sendCommandTree(target);
+                        server.getCommands().sendCommands(target);
                     }
                 }
             }
@@ -325,7 +323,7 @@ public class WhitelistCommands {
         return 1;
     }
 
-    private static int listAdmins(CommandContext<ServerCommandSource> ctx) {
+    private static int listAdmins(CommandContext<CommandSourceStack> ctx) {
         Set<String> admins = IPWLMod.getConfig().getAdmins();
         if (admins.isEmpty()) {
             IPWLMod.sendFeedback(ctx.getSource(), IPWLMessages.get("ipwl.cmd.admin_none"));
@@ -338,14 +336,14 @@ public class WhitelistCommands {
         return 1;
     }
 
-    private static int setLogging(CommandContext<ServerCommandSource> ctx, boolean verbose) {
+    private static int setLogging(CommandContext<CommandSourceStack> ctx, boolean verbose) {
         IPWLMod.getConfig().setVerboseLogging(verbose);
         IPWLMod.sendFeedback(ctx.getSource(),
             IPWLMessages.get(verbose ? "ipwl.cmd.logs_verbose" : "ipwl.cmd.logs_silent"));
         return 1;
     }
 
-    private static int setLockdown(CommandContext<ServerCommandSource> ctx, boolean enable) {
+    private static int setLockdown(CommandContext<CommandSourceStack> ctx, boolean enable) {
         SecurityManager security = IPWLMod.getSecurityManager();
         if (security == null) {
             IPWLMod.sendFeedback(ctx.getSource(), IPWLMessages.get("ipwl.cmd.security_not_ready"));
@@ -363,24 +361,24 @@ public class WhitelistCommands {
      * Notify all online admins of a whitelist change.
      * Skips the source itself (they already got direct feedback).
      */
-    private static void broadcastToAdmins(ServerCommandSource source, String message) {
+    private static void broadcastToAdmins(CommandSourceStack source, String message) {
         var server = IPWLMod.getServer();
         if (server == null) return;
-        var playerManager = server.getPlayerManager();
+        var playerManager = server.getPlayerList();
         if (playerManager == null) return;
         var adminNames = IPWLMod.getConfig().getAdmins();
-        String sourceName = source.getName();
-        for (net.minecraft.server.network.ServerPlayerEntity p : playerManager.getPlayerList()) {
+        String sourceName = source.getTextName();
+        for (net.minecraft.server.level.ServerPlayer p : playerManager.getPlayers()) {
             String name = p.getName().getString();
             if (adminNames.contains(name) && !name.equals(sourceName)) {
-                p.sendMessage(net.minecraft.text.Text.literal(message));
+                p.sendSystemMessage(net.minecraft.network.chat.Component.literal(message));
             }
         }
         IPWLMod.LOGGER.info("[IPWL] {}", message);
     }
 
-    static String getPlayerIp(ServerPlayerEntity player) {
-        if (player.networkHandler.getConnectionAddress() instanceof InetSocketAddress addr) {
+    static String getPlayerIp(ServerPlayer player) {
+        if (player.connection.getRemoteAddress() instanceof InetSocketAddress addr) {
             return addr.getAddress().getHostAddress();
         }
         return "unknown";

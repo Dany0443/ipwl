@@ -3,7 +3,7 @@ package com.danz.ipwl.manager;
 import com.danz.ipwl.IPWLMod;
 import com.danz.ipwl.config.IPWLMessages;
 import com.google.gson.*;
-import net.minecraft.text.Text;
+import net.minecraft.network.chat.Component;
 
 import java.io.File;
 import net.fabricmc.loader.api.FabricLoader;
@@ -160,21 +160,21 @@ public class SecurityManager {
     // Status report
     // -------------------------------------------------------------------------
 
-    public List<Text> getStatus() {
-        List<Text> lines = new ArrayList<>();
-        lines.add(Text.literal(IPWLMessages.get("ipwl.status.header")));
-        lines.add(Text.literal(IPWLMessages.fmt("ipwl.status.lockdown",
+    public List<Component> getStatus() {
+        List<Component> lines = new ArrayList<>();
+        lines.add(Component.literal(IPWLMessages.get("ipwl.status.header")));
+        lines.add(Component.literal(IPWLMessages.fmt("ipwl.status.lockdown",
             lockdownMode ? "§cENABLED" : "§aDISABLED")));
-        lines.add(Text.literal(IPWLMessages.fmt("ipwl.status.connections",  connectionCounts.size())));
-        lines.add(Text.literal(IPWLMessages.fmt("ipwl.status.temp_bans",    tempBannedIps.size())));
-        lines.add(Text.literal(IPWLMessages.get("ipwl.status.session_header")));
-        lines.add(Text.literal(IPWLMessages.fmt("ipwl.status.allowed",      stats.sessionAllowed.get())));
-        lines.add(Text.literal(IPWLMessages.fmt("ipwl.status.blocked",      stats.sessionBlocked.get())));
-        lines.add(Text.literal(IPWLMessages.fmt("ipwl.status.dupes",        stats.sessionDuplicates.get())));
-        lines.add(Text.literal(IPWLMessages.fmt("ipwl.status.ratelimit",    stats.sessionRateLimitHits.get())));
-        lines.add(Text.literal(IPWLMessages.get("ipwl.status.alltime_header")));
-        lines.add(Text.literal(IPWLMessages.fmt("ipwl.status.allowed",      stats.totalAllowed.get())));
-        lines.add(Text.literal(IPWLMessages.fmt("ipwl.status.blocked",      stats.totalBlocked.get())));
+        lines.add(Component.literal(IPWLMessages.fmt("ipwl.status.connections",  connectionCounts.size())));
+        lines.add(Component.literal(IPWLMessages.fmt("ipwl.status.temp_bans",    tempBannedIps.size())));
+        lines.add(Component.literal(IPWLMessages.get("ipwl.status.session_header")));
+        lines.add(Component.literal(IPWLMessages.fmt("ipwl.status.allowed",      stats.sessionAllowed.get())));
+        lines.add(Component.literal(IPWLMessages.fmt("ipwl.status.blocked",      stats.sessionBlocked.get())));
+        lines.add(Component.literal(IPWLMessages.fmt("ipwl.status.dupes",        stats.sessionDuplicates.get())));
+        lines.add(Component.literal(IPWLMessages.fmt("ipwl.status.ratelimit",    stats.sessionRateLimitHits.get())));
+        lines.add(Component.literal(IPWLMessages.get("ipwl.status.alltime_header")));
+        lines.add(Component.literal(IPWLMessages.fmt("ipwl.status.allowed",      stats.totalAllowed.get())));
+        lines.add(Component.literal(IPWLMessages.fmt("ipwl.status.blocked",      stats.totalBlocked.get())));
         return lines;
     }
 

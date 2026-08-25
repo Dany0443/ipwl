@@ -1,22 +1,32 @@
 plugins {
-    id 'net.fabricmc.fabric-loom-remap' version '1.15-SNAPSHOT'
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
     id 'maven-publish'
 }
 
-group = 'com.danz'
-version = '1.5.3'
+version = project.mod_version
+group = project.maven_group
 
 repositories {
-    maven { url 'https://maven.fabricmc.net/' }
-    maven { url 'https://maven.relativitymc.net/releases/' }
     mavenCentral()
 }
 
 dependencies {
-    minecraft "com.mojang:minecraft:${minecraft_version}"
-    mappings "net.fabricmc:yarn:${yarn_mappings}:v2"
-    modImplementation "net.fabricmc:fabric-loader:${loader_version}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+}
+
+processResources {
+    def version = project.version
+    inputs.property "version", version
+
+    filesMatching("fabric.mod.json") {
+        expand "version": version
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = 25
 }
 
 java {
@@ -28,23 +38,10 @@ java {
     targetCompatibility = JavaVersion.VERSION_25
 }
 
-tasks.withType(JavaCompile).configureEach {
-    it.options.release = 25
+tasks.named("jar") {
+    archiveFileName = "ipwhitelist-${project.version}-mc${project.minecraft_version}.jar"
 }
 
-processResources {
-    inputs.property "version", project.version
-    filesMatching("fabric.mod.json") {
-        expand "version": project.version
-    }
-}
-
-def mcArtifactTag = "mc${minecraft_version}"
-
-tasks.named("remapJar") {
-    archiveFileName = "${project.name}-${project.version}-${mcArtifactTag}.jar"
-}
-
-tasks.named("remapSourcesJar") {
-    archiveFileName = "${project.name}-${project.version}-${mcArtifactTag}-sources.jar"
+tasks.named("sourcesJar") {
+    archiveFileName = "ipwhitelist-${project.version}-mc${project.minecraft_version}-sources.jar"
 }

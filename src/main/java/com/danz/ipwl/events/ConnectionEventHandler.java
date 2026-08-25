@@ -5,8 +5,8 @@ import com.danz.ipwl.config.IPWLMessages;
 import com.danz.ipwl.manager.WhitelistManager;
 import com.danz.ipwl.commands.SecurityCommands;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Text;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.Component;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -27,11 +27,11 @@ public class ConnectionEventHandler {
 
     public static void register() {
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
-            ServerPlayerEntity player = handler.player;
+            ServerPlayer player = handler.player;
             String username = player.getName().getString();
 
             String ip = "unknown";
-            SocketAddress remote = handler.getConnectionAddress();
+            SocketAddress remote = handler.getRemoteAddress();
             if (remote instanceof InetSocketAddress addr && addr.getAddress() != null) {
                 ip = addr.getAddress().getHostAddress();
             }
@@ -42,7 +42,7 @@ public class ConnectionEventHandler {
             CompletableFuture.runAsync(() -> {
                 if (!verifyPlayerWithRetry(username, finalIp, 3)) {
                     server.execute(() -> {
-                        handler.disconnect(Text.literal(IPWLMessages.get("ipwl.disconnect.security_failed")));
+                        handler.disconnect(Component.literal(IPWLMessages.get("ipwl.disconnect.security_failed")));
                         IPWLMod.LOGGER.warn("[IPWL SECURITY] Kicked {} due to verification failure", username);
                     });
                 }
@@ -50,10 +50,10 @@ public class ConnectionEventHandler {
         });
 
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
-            ServerPlayerEntity player = handler.player;
+            ServerPlayer player = handler.player;
             String username = player.getName().getString();
             String ip = "unknown";
-            SocketAddress remote = handler.getConnectionAddress();
+            SocketAddress remote = handler.getRemoteAddress();
             if (remote instanceof InetSocketAddress addr && addr.getAddress() != null) {
                 ip = addr.getAddress().getHostAddress();
             }

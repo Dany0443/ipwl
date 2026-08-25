@@ -37,3 +37,11 @@ java {
     sourceCompatibility = JavaVersion.VERSION_25
     targetCompatibility = JavaVersion.VERSION_25
 }
+
+tasks.named("jar") {
+    archiveFileName = "ipwhitelist-${project.version}-mc${project.minecraft_version}.jar"
+}
+
+tasks.named("sourcesJar") {
+    archiveFileName = "ipwhitelist-${project.version}-mc${project.minecraft_version}-sources.jar"
+}

@@ -4,8 +4,8 @@ import com.google.gson.*;
 import com.danz.ipwl.IPWLMod;
 import com.danz.ipwl.config.IPWLMessages;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.text.Text;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 
 import java.io.File;
 import java.io.FileReader;
@@ -252,32 +252,32 @@ public class WhitelistManager {
     // Formatted list
     // -------------------------------------------------------------------------
 
-    public List<Text> getFormattedList() {
-        List<Text> lines = new ArrayList<>();
+    public List<Component> getFormattedList() {
+        List<Component> lines = new ArrayList<>();
         if (whitelist.isEmpty()) {
-            lines.add(Text.literal(IPWLMessages.get("ipwl.cmd.whitelist_empty")));
+            lines.add(Component.literal(IPWLMessages.get("ipwl.cmd.whitelist_empty")));
             return lines;
         }
-        lines.add(Text.literal(IPWLMessages.get("ipwl.cmd.whitelist_header")));
+        lines.add(Component.literal(IPWLMessages.get("ipwl.cmd.whitelist_header")));
         for (Map.Entry<String, Set<String>> entry : whitelist.entrySet()) {
             String username = entry.getKey();
             Set<String> ips = entry.getValue();
             if (ips.contains("*")) {
-                lines.add(Text.literal(IPWLMessages.fmt("ipwl.cmd.whitelist_entry_any", username)));
+                lines.add(Component.literal(IPWLMessages.fmt("ipwl.cmd.whitelist_entry_any", username)));
             } else {
-                lines.add(Text.literal(
+                lines.add(Component.literal(
                     IPWLMessages.fmt("ipwl.cmd.whitelist_entry_ips", username, String.join(", ", ips))));
             }
         }
         // Show active temp approvals
         if (!tempApprovals.isEmpty()) {
-            lines.add(Text.literal(IPWLMessages.get("ipwl.cmd.tempadd_list_header")));
+            lines.add(Component.literal(IPWLMessages.get("ipwl.cmd.tempadd_list_header")));
             long now = System.currentTimeMillis();
             tempApprovals.forEach((user, list) -> {
                 for (TempEntry e : list) {
                     if (e.expiresAt > now) {
                         long remaining = (e.expiresAt - now) / 1000;
-                        lines.add(Text.literal(
+                        lines.add(Component.literal(
                             IPWLMessages.fmt("ipwl.cmd.tempadd_list_entry", user, e.ip, remaining)));
                     }
                 }
@@ -301,12 +301,12 @@ public class WhitelistManager {
     private static void notifyAdmins(String message) {
     var server = IPWLMod.getServer();
     if (server == null) return;
-    var playerManager = server.getPlayerManager();
+    var playerManager = server.getPlayerList();
     if (playerManager == null) return;
     var admins = IPWLMod.getConfig().getAdmins();
-    playerManager.getPlayerList().forEach(p -> {
+    playerManager.getPlayers().forEach(p -> {
         if (admins.contains(p.getName().getString())) {
-            p.sendMessage(Text.literal(message));
+            p.sendSystemMessage(Component.literal(message));
         }
     });
     }

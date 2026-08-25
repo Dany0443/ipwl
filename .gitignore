@@ -69,3 +69,5 @@ crash-reports/
 **/crash-reports/
 logs/
 **/logs/
+
+dist_jars/
