@@ -69,7 +69,7 @@ public abstract class ServerLoginNetworkHandlerMixin {
             return;
         }
 
-        // 4. Bruteforce detection — IP trying many different names (bot behaviour)
+        // 4. Bruteforce detection - IP trying many different names (bot behaviour)
         //    Must run BEFORE rate-limit so we catch multi-name attempts that individually
         //    pass the 1-per-second rate check.
         if (!security.checkBruteForce(ip, username)) {

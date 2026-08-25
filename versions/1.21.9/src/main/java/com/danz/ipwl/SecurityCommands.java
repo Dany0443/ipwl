@@ -24,8 +24,8 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * <p>Called from:
  * <ul>
- *   <li>{@link IPWLMod} — {@code SecurityCommands.register(dispatcher)}</li>
- *   <li>{@link com.danz.ipwl.events.ConnectionEventHandler} —
+ *   <li>{@link IPWLMod} - {@code SecurityCommands.register(dispatcher)}</li>
+ *   <li>{@link com.danz.ipwl.events.ConnectionEventHandler} -
  *       {@code updatePlayerSeen} / {@code updatePlayerLeft}</li>
  * </ul>
  */
@@ -122,7 +122,7 @@ public class SecurityCommands {
     }
 
     // -------------------------------------------------------------------------
-    // Player tracking — called by ConnectionEventHandler
+    // Player tracking - called by ConnectionEventHandler
     // -------------------------------------------------------------------------
 
     public static void updatePlayerSeen(String username, String ip) {

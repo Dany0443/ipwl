@@ -2,9 +2,11 @@ package com.danz.ipwl.manager;
 
 import com.danz.ipwl.IPWLMod;
 import com.danz.ipwl.config.IPWLMessages;
-import net.minecraft.ChatFormatting;
-import net.minecraft.network.chat.*;
-import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.text.ClickEvent;
+import net.minecraft.text.HoverEvent;
+import net.minecraft.text.MutableText;
+import net.minecraft.text.Text;
+import net.minecraft.server.network.ServerPlayerEntity;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -40,7 +42,15 @@ public final class AlertManager {
         lastAlertTime.put(ip, now);
 
         logConsoleBanner(username, ip);
-        sendToAdmins(buildAlertComponent(username, ip));
+        Text alert = buildAlertComponent(username, ip);
+        var server = IPWLMod.getServer();
+        if (server != null) {
+            // onHello runs on a login/network thread; marshal chat send to the
+            // main server thread so delivery to online admins is reliable.
+            server.execute(() -> sendToAdmins(alert, username, ip));
+        } else {
+            sendToAdmins(alert, username, ip);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -63,39 +73,44 @@ public final class AlertManager {
     // In-game clickable alert
     // -------------------------------------------------------------------------
 
-    private static Component buildAlertComponent(String username, String ip) {
-        MutableComponent base = Component.literal(
+    private static Text buildAlertComponent(String username, String ip) {
+        MutableText base = Text.literal(
             IPWLMessages.fmt("ipwl.alert.base", username, ip));
 
         String acceptCmd = IPWLMessages.fmt("ipwl.alert.cmd_accept", username, ip);
-        MutableComponent accept = Component.literal(IPWLMessages.get("ipwl.alert.btn_accept"))
-            .withStyle(style -> style
-                .withColor(ChatFormatting.GREEN)
+        MutableText accept = Text.literal(IPWLMessages.get("ipwl.alert.btn_accept"))
+            .styled(style -> style
                 .withClickEvent(new ClickEvent.RunCommand(acceptCmd))
-                .withHoverEvent(new HoverEvent.ShowText(
-                    Component.literal(IPWLMessages.fmt("ipwl.alert.hover_accept", username, ip)))));
+                .withHoverEvent(new HoverEvent.ShowText(Text.literal(IPWLMessages.fmt("ipwl.alert.hover_accept", username, ip)))));
 
         String banCmd = IPWLMessages.fmt("ipwl.alert.cmd_ban", ip);
-        MutableComponent ban = Component.literal(IPWLMessages.get("ipwl.alert.btn_ban"))
-            .withStyle(style -> style
-                .withColor(ChatFormatting.RED)
+        MutableText ban = Text.literal(IPWLMessages.get("ipwl.alert.btn_ban"))
+            .styled(style -> style
                 .withClickEvent(new ClickEvent.RunCommand(banCmd))
-                .withHoverEvent(new HoverEvent.ShowText(
-                    Component.literal(IPWLMessages.fmt("ipwl.alert.hover_ban", ip)))));
+                .withHoverEvent(new HoverEvent.ShowText(Text.literal(IPWLMessages.fmt("ipwl.alert.hover_ban", ip)))));
 
         return base.append(accept).append(ban);
     }
 
     // -------------------------------------------------------------------------
 
-    private static void sendToAdmins(Component msg) {
+    private static void sendToAdmins(Text msg, String username, String ip) {
         var server = IPWLMod.getServer();
         if (server == null) return;
-        var adminNames = IPWLMod.getConfig().getAdmins();
-        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            if (adminNames.contains(player.getName().getString())) {
-                player.sendSystemMessage(msg);
+        var playerManager = server.getPlayerManager();
+        if (playerManager == null) return;
+        int delivered = 0;
+        for (ServerPlayerEntity player : playerManager.getPlayerList()) {
+            if (IPWLMod.hasPermission(player.getCommandSource())) {
+                player.sendMessage(msg);
+                delivered++;
             }
+        }
+        if (delivered == 0 && IPWLMod.getConfig().isVerboseLogging()) {
+            IPWLMod.LOGGER.warn(
+                "[IPWL] Unknown join alert for {} ({}) had no online admin recipients",
+                username, ip
+            );
         }
     }
 }

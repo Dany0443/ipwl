@@ -1,4 +1,4 @@
-# IPWL — IP-Based Whitelist for Minecraft (Fabric)
+# IPWL - IP-Based Whitelist for Minecraft (Fabric)
 
 **Minecraft:** 1.21.1-26.2 &nbsp;|&nbsp; **Loader:** Fabric &nbsp;|&nbsp; **Java:** 25 &nbsp;|&nbsp; **License:** GPL
 
@@ -12,7 +12,7 @@ A server-side mod that adds a second security layer on top of Mojang authenticat
 2. Start the server. The mod creates `config/ipwl.json` automatically.
 3. Add yourself as an IPWL admin (see below) and start managing players.
 
-> **No OP required.** IPWL uses its own admin list — OP status is completely separate.
+> **No OP required.** IPWL uses its own admin list - OP status is completely separate.
 
 ---
 
@@ -21,9 +21,9 @@ A server-side mod that adds a second security layer on top of Mojang authenticat
 IPWL has its own permission system. Only players listed as IPWL admins can run any `/ipwl`, `/lockdown`, `/seen`, or `/connections` command. The server console always has full access.
 
 ```
-/ipwl admin add <player>     — Grant IPWL access (saved to config immediately)
-/ipwl admin remove <player>  — Revoke access instantly, refreshes their command tree
-/ipwl admin list             — Show all current IPWL admins
+/ipwl admin add <player>     - Grant IPWL access (saved to config immediately)
+/ipwl admin remove <player>  - Revoke access instantly, refreshes their command tree
+/ipwl admin list             - Show all current IPWL admins
 ```
 
 When an admin is removed they lose tab-complete and command execution immediately without needing to rejoin.
@@ -33,13 +33,13 @@ When an admin is removed they lose tab-complete and command execution immediatel
 ## Whitelist Commands
 
 ```
-/ipwl add <player>           — Allow player from any IP
-/ipwl add <player> <ip>      — Allow player from a specific IP
-/ipwl addip <player> <ip>    — Add a second allowed IP to an existing player
-/ipwl removeip <player> <ip> — Remove one specific IP from a player
-/ipwl remove <player>        — Remove player entirely and kick them if online
-/ipwl list                   — Show all whitelisted players and their IPs
-/ipwl reload                 — Reload config and whitelist from disk
+/ipwl add <player>           - Allow player from any IP
+/ipwl add <player> <ip>      - Allow player from a specific IP
+/ipwl addip <player> <ip>    - Add a second allowed IP to an existing player
+/ipwl removeip <player> <ip> - Remove one specific IP from a player
+/ipwl remove <player>        - Remove player entirely and kick them if online
+/ipwl list                   - Show all whitelisted players and their IPs
+/ipwl reload                 - Reload config and whitelist from disk
 ```
 
 **IP formats supported:**
@@ -63,9 +63,9 @@ Grants access for a limited time without modifying the permanent whitelist. Dura
 ## IP Bans
 
 ```
-/ipwl banip <ip>       — Permanently ban an IP (blocks all accounts from it)
-/ipwl unbanip <ip>     — Lift a permanent ban
-/ipwl banip list       — Show all permanently banned IPs
+/ipwl banip <ip>       - Permanently ban an IP (blocks all accounts from it)
+/ipwl unbanip <ip>     - Lift a permanent ban
+/ipwl banip list       - Show all permanently banned IPs
 ```
 
 Permanent bans are saved to `config/ipwl.json` and survive server restarts.
@@ -75,11 +75,11 @@ Permanent bans are saved to `config/ipwl.json` and survive server restarts.
 ## Security Tools
 
 ```
-/lockdown on     — Block all new connections immediately (admins still allowed)
-/lockdown off    — Resume normal operation
-/seen <player>   — Show last known IP and timestamp for a player
-/connections     — List all currently active connections
-/security status — Show live security stats (blocked, allowed, temp bans, etc.)
+/lockdown on     - Block all new connections immediately (admins still allowed)
+/lockdown off    - Resume normal operation
+/seen <player>   - Show last known IP and timestamp for a player
+/connections     - List all currently active connections
+/security status - Show live security stats (blocked, allowed, temp bans, etc.)
 ```
 
 ---
@@ -88,8 +88,8 @@ Permanent bans are saved to `config/ipwl.json` and survive server restarts.
 
 When someone tries to join and is not on the whitelist, every online admin receives a chat message with two clickable buttons:
 
-- **[Accept]** — runs `/ipwl add <player> <ip>` instantly
-- **[Ban IP]** — runs `/ipwl banip <ip>` instantly
+- **[Accept]** - runs `/ipwl add <player> <ip>` instantly
+- **[Ban IP]** - runs `/ipwl banip <ip>` instantly
 
 At the same time, the server console prints a clearly visible block:
 
@@ -125,8 +125,8 @@ Both ban types are enforced before authentication completes.
 ## Logging
 
 ```
-/ipwl logs verbose   — Log all attempts, retries, and debug info
-/ipwl logs silent    — Log only kicks and critical security events (default)
+/ipwl logs verbose   - Log all attempts, retries, and debug info
+/ipwl logs silent    - Log only kicks and critical security events (default)
 ```
 
 The console always shows unknown-player alerts and bruteforce detections regardless of log level.
@@ -160,7 +160,7 @@ Located at `config/ipwl.json`. Created automatically on first run.
 | File | Contents |
 |---|---|
 | `config/ipwl.json` | All settings, admin list, permanent IP bans |
-| `config/ipwl_whitelist.json` | Player → IP mappings |
+| `config/ipwl_whitelist.json` | Player -> IP mappings |
 | `config/ipwl-stats.json` | Persistent connection statistics (survives restarts) |
 | `config/ipwl-seen.json` | Last-seen data for `/seen` command |
 | `config/ipwl-lang.json` | Optional message overrides (no rebuild needed) |
@@ -171,14 +171,14 @@ To customise any in-game message, create `config/ipwl-lang.json` on the server a
 
 ## How It Works (Brief)
 
-Every login attempt is intercepted at `ServerboundHelloPacket` — the very first packet a client sends — before Mojang authentication starts. The checks run in this order:
+Every login attempt is intercepted at `ServerboundHelloPacket` - the very first packet a client sends - before Mojang authentication starts. The checks run in this order:
 
-1. Lockdown mode → block non-admins
-2. Permanent IP ban → block
-3. Temp ban (rate limit or bruteforce escalation) → block
-4. Bruteforce detection (3+ names from same IP in 60s) → 1-hour ban
-5. Rate limit (too fast) → block, escalate to temp ban after threshold
-6. Duplicate login check → block
-7. Whitelist IP check → block + fire admin alert if not listed
-8. Max connections per IP → block
-9. ✅ Allow — secondary async re-verification runs post-join as a safety net
+1. Lockdown mode -> block non-admins
+2. Permanent IP ban -> block
+3. Temp ban (rate limit or bruteforce escalation) -> block
+4. Bruteforce detection (3+ names from same IP in 60s) -> 1-hour ban
+5. Rate limit (too fast) -> block, escalate to temp ban after threshold
+6. Duplicate login check -> block
+7. Whitelist IP check -> block + fire admin alert if not listed
+8. Max connections per IP -> block
+9. ✅ Allow - secondary async re-verification runs post-join as a safety net

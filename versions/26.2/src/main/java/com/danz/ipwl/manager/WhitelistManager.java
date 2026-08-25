@@ -129,7 +129,7 @@ public class WhitelistManager {
 
     /**
      * Grant {@code username} access from {@code ip} for {@code durationMs} milliseconds.
-     * Does NOT persist to disk — temp approvals live only for the current session
+     * Does NOT persist to disk - temp approvals live only for the current session
      * (or until they expire).
      */
     public void addTempApproval(String username, String ip, long durationMs) {
@@ -162,7 +162,7 @@ public class WhitelistManager {
     }
 
     // -------------------------------------------------------------------------
-    // IP check — exact / wildcard-suffix / CIDR / temp
+    // IP check - exact / wildcard-suffix / CIDR / temp
     // -------------------------------------------------------------------------
 
     public WhitelistResult checkPlayerIp(String username, String ip) {
@@ -176,7 +176,7 @@ public class WhitelistManager {
             return new WhitelistResult(false, "Player not in whitelist");
         }
 
-        // Wildcard — any IP
+        // Wildcard - any IP
         if (allowedIps.contains("*") && IPWLMod.getConfig().isAllowWildcardIps()) {
             return new WhitelistResult(true, "Allowed by wildcard");
         }
@@ -221,7 +221,7 @@ public class WhitelistManager {
     }
 
     /**
-     * Pure-Java CIDR check — no external libraries required.
+     * Pure-Java CIDR check - no external libraries required.
      * Works for both IPv4 ({@code x.x.x.x/n}) and IPv6 ({@code x:x:.../n}).
      */
     private static boolean cidrContains(String cidr, String ipStr) throws Exception {

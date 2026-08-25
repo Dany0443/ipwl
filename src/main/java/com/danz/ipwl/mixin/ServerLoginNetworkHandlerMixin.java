@@ -5,12 +5,12 @@ import com.danz.ipwl.config.IPWLMessages;
 import com.danz.ipwl.manager.AlertManager;
 import com.danz.ipwl.manager.WhitelistManager;
 import com.danz.ipwl.manager.SecurityManager;
-import net.minecraft.network.Connection;
-import net.minecraft.network.protocol.login.ServerboundHelloPacket;
+import net.minecraft.network.ClientConnection;
+import net.minecraft.network.packet.c2s.login.LoginHelloC2SPacket;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerLoginPacketListenerImpl;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.network.chat.Component;
+import net.minecraft.server.network.ServerLoginNetworkHandler;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.Text;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -21,17 +21,17 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.net.InetSocketAddress;
 
-@Mixin(ServerLoginPacketListenerImpl.class)
+@Mixin(ServerLoginNetworkHandler.class)
 public abstract class ServerLoginNetworkHandlerMixin {
 
     @Shadow @Final private MinecraftServer server;
-    @Shadow @Final public Connection connection;
-    @Shadow public abstract void disconnect(Component reason);
+    @Shadow @Final public ClientConnection connection;
+    @Shadow public abstract void disconnect(Text reason);
 
     @Unique private boolean ipwl$verificationChecked = false;
 
-    @Inject(method = "handleHello", at = @At("HEAD"), cancellable = true)
-    public void ipwl$onHello(ServerboundHelloPacket packet, CallbackInfo ci) {
+    @Inject(method = "onHello", at = @At("HEAD"), cancellable = true)
+    public void ipwl$onHello(LoginHelloC2SPacket packet, CallbackInfo ci) {
         if (ipwl$verificationChecked) return;
         ipwl$verificationChecked = true;
 
@@ -47,7 +47,7 @@ public abstract class ServerLoginNetworkHandlerMixin {
         // 1. Lockdown
         if (security.isLockdownMode() && !IPWLMod.getConfig().isAdmin(username)) {
             security.recordBlockedConnection();
-            disconnect(Component.literal(IPWLMessages.get("ipwl.disconnect.lockdown")));
+            disconnect(Text.literal(IPWLMessages.get("ipwl.disconnect.lockdown")));
             ci.cancel();
             return;
         }
@@ -56,7 +56,7 @@ public abstract class ServerLoginNetworkHandlerMixin {
         if (IPWLMod.getConfig().isBannedIp(ip)) {
             security.recordBlockedConnection();
             IPWLMod.LOGGER.warn("[IPWL SECURITY] Permanently banned IP {} tried to connect as {}", ip, username);
-            disconnect(Component.literal(IPWLMessages.get("ipwl.disconnect.temp_banned")));
+            disconnect(Text.literal(IPWLMessages.get("ipwl.disconnect.temp_banned")));
             ci.cancel();
             return;
         }
@@ -64,24 +64,24 @@ public abstract class ServerLoginNetworkHandlerMixin {
         // 3. Temp ban (covers both rate-limit and bruteforce escalations)
         if (security.isTempBanned(ip)) {
             security.recordBlockedConnection();
-            disconnect(Component.literal(IPWLMessages.get("ipwl.disconnect.temp_banned")));
+            disconnect(Text.literal(IPWLMessages.get("ipwl.disconnect.temp_banned")));
             ci.cancel();
             return;
         }
 
-        // 4. Bruteforce detection — IP trying many different names (bot behaviour)
+        // 4. Bruteforce detection - IP trying many different names (bot behaviour)
         //    Must run BEFORE rate-limit so we catch multi-name attempts that individually
         //    pass the 1-per-second rate check.
         if (!security.checkBruteForce(ip, username)) {
             security.recordBlockedConnection();
-            disconnect(Component.literal(IPWLMessages.get("ipwl.disconnect.temp_banned")));
+            disconnect(Text.literal(IPWLMessages.get("ipwl.disconnect.temp_banned")));
             ci.cancel();
             return;
         }
 
         // 5. Rate limit (single name hammering)
         if (!security.checkRateLimit(ip)) {
-            disconnect(Component.literal(IPWLMessages.get("ipwl.disconnect.rate_limit")));
+            disconnect(Text.literal(IPWLMessages.get("ipwl.disconnect.rate_limit")));
             ci.cancel();
             return;
         }
@@ -90,7 +90,7 @@ public abstract class ServerLoginNetworkHandlerMixin {
         if (IPWLMod.getConfig().isEnableDuplicateCheck() && ipwl$isPlayerAlreadyOnline(username)) {
             security.recordDuplicateAttempt();
             IPWLMod.LOGGER.warn("[IPWL SECURITY] Blocked duplicate login for {} from {}", username, ip);
-            disconnect(Component.literal(IPWLMessages.get("ipwl.disconnect.duplicate")));
+            disconnect(Text.literal(IPWLMessages.get("ipwl.disconnect.duplicate")));
             ci.cancel();
             return;
         }
@@ -103,7 +103,7 @@ public abstract class ServerLoginNetworkHandlerMixin {
                 IPWLMod.LOGGER.warn("[IPWL SECURITY] Blocked {} from {}: {}", username, ip, result.reason);
             }
             AlertManager.getInstance().fireAlert(username, ip);
-            disconnect(Component.literal(IPWLMessages.get("ipwl.disconnect.not_whitelisted")));
+            disconnect(Text.literal(IPWLMessages.get("ipwl.disconnect.not_whitelisted")));
             ci.cancel();
             return;
         }
@@ -112,7 +112,7 @@ public abstract class ServerLoginNetworkHandlerMixin {
         if (!security.addConnection(ip)) {
             security.recordBlockedConnection();
             IPWLMod.LOGGER.warn("[IPWL SECURITY] Max connections reached for {} from {}", username, ip);
-            disconnect(Component.literal(IPWLMessages.get("ipwl.disconnect.max_connections")));
+            disconnect(Text.literal(IPWLMessages.get("ipwl.disconnect.max_connections")));
             ci.cancel();
             return;
         }
@@ -126,7 +126,7 @@ public abstract class ServerLoginNetworkHandlerMixin {
     @Unique
     private String ipwl$getIpAddress() {
         try {
-            if (connection.getRemoteAddress() instanceof InetSocketAddress addr) {
+            if (connection.getAddress() instanceof InetSocketAddress addr) {
                 return addr.getAddress().getHostAddress();
             }
         } catch (Exception e) {
@@ -138,7 +138,9 @@ public abstract class ServerLoginNetworkHandlerMixin {
     @Unique
     private boolean ipwl$isPlayerAlreadyOnline(String username) {
         try {
-            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            var playerManager = server.getPlayerManager();
+            if (playerManager == null) return false;
+            for (ServerPlayerEntity player : playerManager.getPlayerList()) {
                 if (player.getName().getString().equals(username)) return true;
             }
         } catch (Exception e) {

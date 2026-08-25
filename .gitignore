@@ -1,0 +1,71 @@
+# gradle and build files
+.gradle/
+**/.gradle/
+.gradle-user-home/
+build/
+**/build/
+out/
+**/out/
+classes/
+**/classes/
+bin/
+**/bin/
+.gradletasknamecache
+gradle-app.setting
+
+# keep wrapper jars
+!gradle-wrapper.jar
+!**/gradle-wrapper.jar
+
+# logs and crash dumps
+*.log
+**/*.log
+build-*.log
+hs_err_*.log
+replay_*.log
+*.hprof
+*.jfr
+
+# ide settings
+.idea/
+**/.idea/
+*.iml
+**/*.iml
+*.ipr
+*.iws
+.vscode/
+**/.vscode/
+.settings/
+**/.settings/
+.classpath
+**/.classpath
+.project
+**/.project
+*.launch
+
+# ai and agent folders
+.agents/
+**/.agents/
+.codex/
+**/.codex/
+.gemini/
+**/.gemini/
+
+# os files
+.DS_Store
+**/.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+**/*.db
+
+# minecraft and server runs
+run/
+**/run/
+crash-reports/
+**/crash-reports/
+logs/
+**/logs/

@@ -3,7 +3,7 @@ package com.danz.ipwl.manager;
 import com.danz.ipwl.IPWLMod;
 import com.danz.ipwl.config.IPWLMessages;
 import com.google.gson.*;
-import net.minecraft.network.chat.Component;
+import net.minecraft.text.Text;
 
 import java.io.File;
 import net.fabricmc.loader.api.FabricLoader;
@@ -71,7 +71,7 @@ public class SecurityManager {
         if (attempts.size() >= BRUTEFORCE_NAME_THRESHOLD) {
             String names = String.join(", ", attempts.keySet());
             IPWLMod.LOGGER.warn(
-                "[IPWL SECURITY] !! BRUTEFORCE DETECTED !! IP {} tried {} different names in {}s: [{}] — banned for 1 hour",
+                "[IPWL SECURITY] !! BRUTEFORCE DETECTED !! IP {} tried {} different names in {}s: [{}] - banned for 1 hour",
                 ip, attempts.size(), BRUTEFORCE_WINDOW_MS / 1000, names);
             applyTempBan(ip, BRUTEFORCE_BAN_MS, "bruteforce (" + attempts.size() + " names in 1 min)");
             ipUsernameWindow.remove(ip); // clear so the ban-expiry is a clean slate
@@ -130,7 +130,7 @@ public class SecurityManager {
     private void applyTempBan(String ip, long durationMs, String reason) {
         if (tempBannedIps.add(ip)) { // only log + schedule once if not already banned
             long minutes = durationMs / 60_000;
-            IPWLMod.LOGGER.warn("[IPWL SECURITY] IP {} temp-banned for {}min — reason: {}", ip, minutes, reason);
+            IPWLMod.LOGGER.warn("[IPWL SECURITY] IP {} temp-banned for {}min - reason: {}", ip, minutes, reason);
             new Timer(true).schedule(new TimerTask() {
                 @Override public void run() {
                     tempBannedIps.remove(ip);
@@ -152,7 +152,7 @@ public class SecurityManager {
 
     public void setLockdownMode(boolean enabled) {
         this.lockdownMode = enabled;
-        if (enabled) IPWLMod.LOGGER.warn("[IPWL SECURITY] LOCKDOWN MODE ENABLED — only admins can join.");
+        if (enabled) IPWLMod.LOGGER.warn("[IPWL SECURITY] LOCKDOWN MODE ENABLED - only admins can join.");
         else         IPWLMod.LOGGER.info("[IPWL SECURITY] Lockdown mode disabled. Normal joining resumed.");
     }
 
@@ -160,21 +160,21 @@ public class SecurityManager {
     // Status report
     // -------------------------------------------------------------------------
 
-    public List<Component> getStatus() {
-        List<Component> lines = new ArrayList<>();
-        lines.add(Component.literal(IPWLMessages.get("ipwl.status.header")));
-        lines.add(Component.literal(IPWLMessages.fmt("ipwl.status.lockdown",
+    public List<Text> getStatus() {
+        List<Text> lines = new ArrayList<>();
+        lines.add(Text.literal(IPWLMessages.get("ipwl.status.header")));
+        lines.add(Text.literal(IPWLMessages.fmt("ipwl.status.lockdown",
             lockdownMode ? "§cENABLED" : "§aDISABLED")));
-        lines.add(Component.literal(IPWLMessages.fmt("ipwl.status.connections",  connectionCounts.size())));
-        lines.add(Component.literal(IPWLMessages.fmt("ipwl.status.temp_bans",    tempBannedIps.size())));
-        lines.add(Component.literal(IPWLMessages.get("ipwl.status.session_header")));
-        lines.add(Component.literal(IPWLMessages.fmt("ipwl.status.allowed",      stats.sessionAllowed.get())));
-        lines.add(Component.literal(IPWLMessages.fmt("ipwl.status.blocked",      stats.sessionBlocked.get())));
-        lines.add(Component.literal(IPWLMessages.fmt("ipwl.status.dupes",        stats.sessionDuplicates.get())));
-        lines.add(Component.literal(IPWLMessages.fmt("ipwl.status.ratelimit",    stats.sessionRateLimitHits.get())));
-        lines.add(Component.literal(IPWLMessages.get("ipwl.status.alltime_header")));
-        lines.add(Component.literal(IPWLMessages.fmt("ipwl.status.allowed",      stats.totalAllowed.get())));
-        lines.add(Component.literal(IPWLMessages.fmt("ipwl.status.blocked",      stats.totalBlocked.get())));
+        lines.add(Text.literal(IPWLMessages.fmt("ipwl.status.connections",  connectionCounts.size())));
+        lines.add(Text.literal(IPWLMessages.fmt("ipwl.status.temp_bans",    tempBannedIps.size())));
+        lines.add(Text.literal(IPWLMessages.get("ipwl.status.session_header")));
+        lines.add(Text.literal(IPWLMessages.fmt("ipwl.status.allowed",      stats.sessionAllowed.get())));
+        lines.add(Text.literal(IPWLMessages.fmt("ipwl.status.blocked",      stats.sessionBlocked.get())));
+        lines.add(Text.literal(IPWLMessages.fmt("ipwl.status.dupes",        stats.sessionDuplicates.get())));
+        lines.add(Text.literal(IPWLMessages.fmt("ipwl.status.ratelimit",    stats.sessionRateLimitHits.get())));
+        lines.add(Text.literal(IPWLMessages.get("ipwl.status.alltime_header")));
+        lines.add(Text.literal(IPWLMessages.fmt("ipwl.status.allowed",      stats.totalAllowed.get())));
+        lines.add(Text.literal(IPWLMessages.fmt("ipwl.status.blocked",      stats.totalBlocked.get())));
         return lines;
     }
 

@@ -5,17 +5,18 @@ import com.danz.ipwl.config.IPWLMessages;
 import com.danz.ipwl.manager.WhitelistManager;
 import com.danz.ipwl.commands.SecurityCommands;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.network.chat.Component;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.Text;
 
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class ConnectionEventHandler {
 
-    // Dedicated thread pool for async IP verification — avoids starving the
+    // Dedicated thread pool for async IP verification - avoids starving the
     // common ForkJoinPool with Thread.sleep() calls during retry back-off.
     private static final ExecutorService VERIFY_EXECUTOR =
             Executors.newCachedThreadPool(r -> {
@@ -26,11 +27,12 @@ public class ConnectionEventHandler {
 
     public static void register() {
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
-            ServerPlayer player = handler.player;
+            ServerPlayerEntity player = handler.player;
             String username = player.getName().getString();
 
             String ip = "unknown";
-            if (player.connection.getRemoteAddress() instanceof InetSocketAddress addr) {
+            SocketAddress remote = handler.getConnectionAddress();
+            if (remote instanceof InetSocketAddress addr && addr.getAddress() != null) {
                 ip = addr.getAddress().getHostAddress();
             }
 
@@ -40,22 +42,19 @@ public class ConnectionEventHandler {
             CompletableFuture.runAsync(() -> {
                 if (!verifyPlayerWithRetry(username, finalIp, 3)) {
                     server.execute(() -> {
-                        if (player.connection != null) {
-                            player.connection.disconnect(
-                                Component.literal(IPWLMessages.get("ipwl.disconnect.security_failed"))
-                            );
-                            IPWLMod.LOGGER.warn("[IPWL SECURITY] Kicked {} due to verification failure", username);
-                        }
+                        handler.disconnect(Text.literal(IPWLMessages.get("ipwl.disconnect.security_failed")));
+                        IPWLMod.LOGGER.warn("[IPWL SECURITY] Kicked {} due to verification failure", username);
                     });
                 }
             }, VERIFY_EXECUTOR);
         });
 
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
-            ServerPlayer player = handler.player;
+            ServerPlayerEntity player = handler.player;
             String username = player.getName().getString();
             String ip = "unknown";
-            if (player.connection.getRemoteAddress() instanceof InetSocketAddress addr) {
+            SocketAddress remote = handler.getConnectionAddress();
+            if (remote instanceof InetSocketAddress addr && addr.getAddress() != null) {
                 ip = addr.getAddress().getHostAddress();
             }
             SecurityCommands.updatePlayerLeft(username, ip);

@@ -42,7 +42,15 @@ public final class AlertManager {
         lastAlertTime.put(ip, now);
 
         logConsoleBanner(username, ip);
-        sendToAdmins(buildAlertComponent(username, ip));
+        Text alert = buildAlertComponent(username, ip);
+        var server = IPWLMod.getServer();
+        if (server != null) {
+            // onHello runs on a login/network thread; marshal chat send to the
+            // main server thread so delivery to online admins is reliable.
+            server.execute(() -> sendToAdmins(alert, username, ip));
+        } else {
+            sendToAdmins(alert, username, ip);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -86,16 +94,23 @@ public final class AlertManager {
 
     // -------------------------------------------------------------------------
 
-    private static void sendToAdmins(Text msg) {
+    private static void sendToAdmins(Text msg, String username, String ip) {
         var server = IPWLMod.getServer();
         if (server == null) return;
         var playerManager = server.getPlayerManager();
         if (playerManager == null) return;
-        var adminNames = IPWLMod.getConfig().getAdmins();
+        int delivered = 0;
         for (ServerPlayerEntity player : playerManager.getPlayerList()) {
-            if (adminNames.contains(player.getName().getString())) {
+            if (IPWLMod.hasPermission(player.getCommandSource())) {
                 player.sendMessage(msg);
+                delivered++;
             }
+        }
+        if (delivered == 0 && IPWLMod.getConfig().isVerboseLogging()) {
+            IPWLMod.LOGGER.warn(
+                "[IPWL] Unknown join alert for {} ({}) had no online admin recipients",
+                username, ip
+            );
         }
     }
 }

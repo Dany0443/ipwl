@@ -302,7 +302,7 @@ public class WhitelistCommands {
             IPWLMod.getConfig().removeAdmin(username);
             IPWLMod.sendFeedback(ctx.getSource(), IPWLMessages.fmt("ipwl.cmd.admin_remove", username));
             // hasPermission() reads config live so commands are blocked immediately.
-            // Kick them only if they have no whitelist entry — if they are whitelisted
+            // Kick them only if they have no whitelist entry - if they are whitelisted
             // they stay connected, they just lose admin commands.
             var server = IPWLMod.getServer();
             if (server != null) {
@@ -311,11 +311,11 @@ public class WhitelistCommands {
                 ServerPlayerEntity target = playerManager.getPlayer(username);
                 if (target != null) {
                     if (!IPWLMod.getWhitelistManager().hasPlayer(username)) {
-                        // Not whitelisted either — kick them off entirely
+                        // Not whitelisted either - kick them off entirely
                         target.networkHandler.disconnect(
                             Text.literal(IPWLMessages.get("ipwl.disconnect.removed")));
                     } else {
-                        // Still whitelisted — stay connected but push a refreshed command
+                        // Still whitelisted - stay connected but push a refreshed command
                         // tree so /ipwl disappears from their tab-complete immediately.
                         playerManager.sendCommandTree(target);
                     }

@@ -4,8 +4,8 @@ import com.google.gson.*;
 import com.danz.ipwl.IPWLMod;
 import com.danz.ipwl.config.IPWLMessages;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.text.Text;
+import net.minecraft.server.network.ServerPlayerEntity;
 
 import java.io.File;
 import java.io.FileReader;
@@ -129,7 +129,7 @@ public class WhitelistManager {
 
     /**
      * Grant {@code username} access from {@code ip} for {@code durationMs} milliseconds.
-     * Does NOT persist to disk — temp approvals live only for the current session
+     * Does NOT persist to disk - temp approvals live only for the current session
      * (or until they expire).
      */
     public void addTempApproval(String username, String ip, long durationMs) {
@@ -162,7 +162,7 @@ public class WhitelistManager {
     }
 
     // -------------------------------------------------------------------------
-    // IP check — exact / wildcard-suffix / CIDR / temp
+    // IP check - exact / wildcard-suffix / CIDR / temp
     // -------------------------------------------------------------------------
 
     public WhitelistResult checkPlayerIp(String username, String ip) {
@@ -176,7 +176,7 @@ public class WhitelistManager {
             return new WhitelistResult(false, "Player not in whitelist");
         }
 
-        // Wildcard — any IP
+        // Wildcard - any IP
         if (allowedIps.contains("*") && IPWLMod.getConfig().isAllowWildcardIps()) {
             return new WhitelistResult(true, "Allowed by wildcard");
         }
@@ -221,7 +221,7 @@ public class WhitelistManager {
     }
 
     /**
-     * Pure-Java CIDR check — no external libraries required.
+     * Pure-Java CIDR check - no external libraries required.
      * Works for both IPv4 ({@code x.x.x.x/n}) and IPv6 ({@code x:x:.../n}).
      */
     private static boolean cidrContains(String cidr, String ipStr) throws Exception {
@@ -252,32 +252,32 @@ public class WhitelistManager {
     // Formatted list
     // -------------------------------------------------------------------------
 
-    public List<Component> getFormattedList() {
-        List<Component> lines = new ArrayList<>();
+    public List<Text> getFormattedList() {
+        List<Text> lines = new ArrayList<>();
         if (whitelist.isEmpty()) {
-            lines.add(Component.literal(IPWLMessages.get("ipwl.cmd.whitelist_empty")));
+            lines.add(Text.literal(IPWLMessages.get("ipwl.cmd.whitelist_empty")));
             return lines;
         }
-        lines.add(Component.literal(IPWLMessages.get("ipwl.cmd.whitelist_header")));
+        lines.add(Text.literal(IPWLMessages.get("ipwl.cmd.whitelist_header")));
         for (Map.Entry<String, Set<String>> entry : whitelist.entrySet()) {
             String username = entry.getKey();
             Set<String> ips = entry.getValue();
             if (ips.contains("*")) {
-                lines.add(Component.literal(IPWLMessages.fmt("ipwl.cmd.whitelist_entry_any", username)));
+                lines.add(Text.literal(IPWLMessages.fmt("ipwl.cmd.whitelist_entry_any", username)));
             } else {
-                lines.add(Component.literal(
+                lines.add(Text.literal(
                     IPWLMessages.fmt("ipwl.cmd.whitelist_entry_ips", username, String.join(", ", ips))));
             }
         }
         // Show active temp approvals
         if (!tempApprovals.isEmpty()) {
-            lines.add(Component.literal(IPWLMessages.get("ipwl.cmd.tempadd_list_header")));
+            lines.add(Text.literal(IPWLMessages.get("ipwl.cmd.tempadd_list_header")));
             long now = System.currentTimeMillis();
             tempApprovals.forEach((user, list) -> {
                 for (TempEntry e : list) {
                     if (e.expiresAt > now) {
                         long remaining = (e.expiresAt - now) / 1000;
-                        lines.add(Component.literal(
+                        lines.add(Text.literal(
                             IPWLMessages.fmt("ipwl.cmd.tempadd_list_entry", user, e.ip, remaining)));
                     }
                 }
@@ -301,10 +301,12 @@ public class WhitelistManager {
     private static void notifyAdmins(String message) {
     var server = IPWLMod.getServer();
     if (server == null) return;
+    var playerManager = server.getPlayerManager();
+    if (playerManager == null) return;
     var admins = IPWLMod.getConfig().getAdmins();
-    server.getPlayerList().getPlayers().forEach(p -> {
+    playerManager.getPlayerList().forEach(p -> {
         if (admins.contains(p.getName().getString())) {
-            p.sendSystemMessage(Component.literal(message));
+            p.sendMessage(Text.literal(message));
         }
     });
     }

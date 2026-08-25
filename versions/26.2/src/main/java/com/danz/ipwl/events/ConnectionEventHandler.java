@@ -16,7 +16,7 @@ import java.util.concurrent.Executors;
 
 public class ConnectionEventHandler {
 
-    // Dedicated thread pool for async IP verification — avoids starving the
+    // Dedicated thread pool for async IP verification - avoids starving the
     // common ForkJoinPool with Thread.sleep() calls during retry back-off.
     private static final ExecutorService VERIFY_EXECUTOR =
             Executors.newCachedThreadPool(r -> {
