@@ -181,4 +181,4 @@ Every login attempt is intercepted at `ServerboundHelloPacket` - the very first 
 6. Duplicate login check -> block
 7. Whitelist IP check -> block + fire admin alert if not listed
 8. Max connections per IP -> block
-9. ✅ Allow - secondary async re-verification runs post-join as a safety net
+9. Allow - secondary async re-verification runs post-join as a safety net
