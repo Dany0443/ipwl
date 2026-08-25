@@ -11,27 +11,157 @@ permissions:
   contents: write
 
 jobs:
-  # build each supported mc version
+  # detect what changed and determine what to build
+  detect-changes:
+    name: Check modified files and version
+    runs-on: ubuntu-24.04
+    outputs:
+      should_build: ${{ steps.detect.outputs.should_build }}
+      build_matrix: ${{ steps.detect.outputs.build_matrix }}
+      is_release_bump: ${{ steps.detect.outputs.is_release_bump }}
+      mod_version: ${{ steps.detect.outputs.mod_version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Analyze changes and releases
+        id: detect
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          python3 - <<'EOF'
+          import os, subprocess, json, urllib.request
+
+          all_versions = [
+              '1.21.1', '1.21.2', '1.21.3', '1.21.4', '1.21.5',
+              '1.21.6', '1.21.7', '1.21.8', '1.21.9', '1.21.10',
+              '1.21.11', '26.1', '26.2'
+          ]
+
+          # read mod_version from gradle.properties
+          mod_version = None
+          if os.path.exists("gradle.properties"):
+              with open("gradle.properties", "r") as f:
+                  for line in f:
+                      line = line.strip()
+                      if line.startswith("mod_version="):
+                          mod_version = line.split("=", 1)[1].strip()
+                          break
+                      elif line.startswith("version=") and not mod_version:
+                          mod_version = line.split("=", 1)[1].strip()
+
+          if not mod_version:
+              mod_version = "1.5.3"
+
+          # parse semver version string into numbers for comparison
+          def parse_version(v_str):
+              clean = v_str.lstrip("v").strip()
+              parts = []
+              for part in clean.split("."):
+                  digits = "".join(filter(str.isdigit, part))
+                  parts.append(int(digits) if digits else 0)
+              return parts
+
+          current_parsed = parse_version(mod_version)
+
+          # check github releases for highest released version
+          token = os.environ.get("GH_TOKEN", "")
+          repo = os.environ.get("REPO", "")
+          headers = {
+              "Accept": "application/vnd.github+json",
+              "Authorization": f"Bearer {token}",
+              "X-GitHub-Api-Version": "2022-11-28"
+          }
+          req = urllib.request.Request(f"https://api.github.com/repos/{repo}/releases", headers=headers)
+          releases = []
+          try:
+              with urllib.request.urlopen(req) as resp:
+                  releases = json.loads(resp.read().decode())
+          except Exception as e:
+              print(f"Notice: Could not fetch releases (repo might have none): {e}")
+
+          highest_released = None
+          for r in releases:
+              tag = r.get("tag_name", "")
+              if tag:
+                  parsed = parse_version(tag)
+                  if highest_released is None or parsed > highest_released[0]:
+                      highest_released = (parsed, tag)
+
+          is_release_bump = False
+          if highest_released is None:
+              # no previous releases, eligible for initial draft
+              is_release_bump = True
+          else:
+              if current_parsed > highest_released[0]:
+                  is_release_bump = True
+
+          event_name = os.environ.get("EVENT_NAME", "")
+          if is_release_bump or event_name == "workflow_dispatch":
+              print(f"Release bump or manual trigger detected. Building all versions.")
+              build_versions = all_versions
+          else:
+              # find changed files between commits
+              try:
+                  before_sha = os.environ.get("BEFORE_SHA", "")
+                  if before_sha and before_sha != "0000000000000000000000000000000000000000":
+                      diff_cmd = ["git", "diff", "--name-only", f"{before_sha}..HEAD"]
+                  else:
+                      diff_cmd = ["git", "diff", "--name-only", "HEAD~1..HEAD"]
+                  
+                  diff_res = subprocess.run(diff_cmd, capture_output=True, text=True)
+                  changed_files = [f.strip() for f in diff_res.stdout.splitlines() if f.strip()]
+              except Exception as e:
+                  print(f"Git diff check failed: {e}")
+                  changed_files = []
+
+              print(f"Changed files: {changed_files}")
+
+              # check if changes affect shared root files or workflows
+              global_triggers = ["src/", "build.gradle", "settings.gradle", "gradle.properties", ".github/workflows/"]
+              affects_global = any(any(f.startswith(gt) for gt in global_triggers) for f in changed_files)
+
+              if affects_global:
+                  print("Changes affect root code or build scripts. Building all versions.")
+                  build_versions = all_versions
+              else:
+                  # only build the specific version folders that had edits
+                  build_versions = []
+                  for f in changed_files:
+                      if f.startswith("versions/"):
+                          parts = f.split("/")
+                          if len(parts) > 1 and parts[1] in all_versions:
+                              if parts[1] not in build_versions:
+                                  build_versions.append(parts[1])
+
+          should_build = "true" if build_versions else "false"
+
+          print(f"Selected versions to build: {build_versions}")
+          print(f"should_build: {should_build}")
+          print(f"is_release_bump: {is_release_bump}")
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as gh_out:
+              gh_out.write(f"should_build={should_build}\n")
+              gh_out.write(f"build_matrix={json.dumps(build_versions)}\n")
+              gh_out.write(f"is_release_bump={'true' if is_release_bump else 'false'}\n")
+              gh_out.write(f"mod_version={mod_version}\n")
+          EOF
+
+  # build only the modified versions (or all if release/global change)
   build:
     name: Build Minecraft ${{ matrix.version }}
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.should_build == 'true'
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        version:
-          - '1.21.1'
-          - '1.21.2'
-          - '1.21.3'
-          - '1.21.4'
-          - '1.21.5'
-          - '1.21.6'
-          - '1.21.7'
-          - '1.21.8'
-          - '1.21.9'
-          - '1.21.10'
-          - '1.21.11'
-          - '26.1'
-          - '26.2'
+        version: ${{ fromJson(needs.detect-changes.outputs.build_matrix) }}
 
     steps:
       - name: Checkout repository
@@ -61,116 +191,46 @@ jobs:
           path: versions/${{ matrix.version }}/build/libs/*.jar
           if-no-files-found: error
 
-  # create a draft release if all builds pass and version was bumped
+  # create git tag and draft release when version is bumped
   draft-release:
-    name: Check version and draft release
-    needs: [build]
+    name: Tag version and create draft release
+    needs: [detect-changes, build]
     runs-on: ubuntu-24.04
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    if: needs.detect-changes.outputs.is_release_bump == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Check version against github releases
-        id: version_check
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-        run: |
-          python3 - <<'EOF'
-          import os, sys, json, urllib.request
-
-          # get mod_version from root gradle.properties
-          mod_version = None
-          if os.path.exists("gradle.properties"):
-              with open("gradle.properties", "r") as f:
-                  for line in f:
-                      line = line.strip()
-                      if line.startswith("mod_version="):
-                          mod_version = line.split("=", 1)[1].strip()
-                          break
-                      elif line.startswith("version=") and not mod_version:
-                          mod_version = line.split("=", 1)[1].strip()
-
-          if not mod_version:
-              print("::error::Could not find mod_version in gradle.properties")
-              sys.exit(1)
-
-          print(f"Current version in repo: {mod_version}")
-
-          # helper to parse version string into integer tuple for comparison
-          def parse_version(v_str):
-              clean = v_str.lstrip("v").strip()
-              parts = []
-              for part in clean.split("."):
-                  digits = "".join(filter(str.isdigit, part))
-                  parts.append(int(digits) if digits else 0)
-              return parts
-
-          current_parsed = parse_version(mod_version)
-
-          # fetch all existing releases from github api
-          token = os.environ.get("GH_TOKEN", "")
-          repo = os.environ.get("REPO", "")
-          headers = {
-              "Accept": "application/vnd.github+json",
-              "Authorization": f"Bearer {token}",
-              "X-GitHub-Api-Version": "2022-11-28"
-          }
-          req = urllib.request.Request(f"https://api.github.com/repos/{repo}/releases", headers=headers)
-          releases = []
-          try:
-              with urllib.request.urlopen(req) as resp:
-                  releases = json.loads(resp.read().decode())
-          except Exception as e:
-              print(f"No existing releases found or error reading releases: {e}")
-
-          # find the highest released version tag so far
-          highest_released = None
-          for r in releases:
-              tag = r.get("tag_name", "")
-              if tag:
-                  parsed = parse_version(tag)
-                  if highest_released is None or parsed > highest_released[0]:
-                      highest_released = (parsed, tag)
-
-          should_release = False
-          if highest_released is None:
-              print(f"No previous releases found. Will draft initial release for v{mod_version}.")
-              should_release = True
-          else:
-              print(f"Highest existing release tag: {highest_released[1]}")
-              if current_parsed > highest_released[0]:
-                  print(f"Version bump found ({mod_version} > {highest_released[1]}), drafting release.")
-                  should_release = True
-              else:
-                  print(f"No version bump ({mod_version} <= {highest_released[1]}), skipping release draft.")
-
-          with open(os.environ["GITHUB_OUTPUT"], "a") as gh_out:
-              gh_out.write(f"mod_version={mod_version}\n")
-              gh_out.write(f"should_release={'true' if should_release else 'false'}\n")
-          EOF
+        with:
+          fetch-depth: 0
 
       - name: Download all compiled jars
-        if: steps.version_check.outputs.should_release == 'true'
         uses: actions/download-artifact@v4
         with:
           path: release_artifacts
           pattern: ipwl-mc*
           merge-multiple: true
 
-      - name: Create draft release
-        if: steps.version_check.outputs.should_release == 'true'
+      - name: Create git tag and draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG_NAME: "v${{ steps.version_check.outputs.mod_version }}"
-          VERSION: "${{ steps.version_check.outputs.mod_version }}"
+          TAG_NAME: "${{ needs.detect-changes.outputs.mod_version }}"
+          VERSION: "${{ needs.detect-changes.outputs.mod_version }}"
         run: |
-          # clean up existing draft for this tag if it exists
+          # configure bot git identity
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # create and push tag if not already on remote
+          if ! git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
+            git push origin "$TAG_NAME"
+          fi
+          
+          # delete existing draft for this tag if present
           gh release delete "$TAG_NAME" --yes 2>/dev/null || true
           
           # create draft release with all jars attached
           gh release create "$TAG_NAME" release_artifacts/*.jar \
             --draft \
-            --title "IPWL v${VERSION}" \
+            --title "IPWL $TAG_NAME" \
             --generate-notes
