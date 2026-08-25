@@ -188,7 +188,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ipwl-mc${{ matrix.version }}
-          path: versions/${{ matrix.version }}/build/libs/*.jar
+          path: |
+            versions/${{ matrix.version }}/build/libs/*.jar
+            !versions/${{ matrix.version }}/build/libs/*-sources.jar
+            !versions/${{ matrix.version }}/build/libs/*-dev.jar
           if-no-files-found: error
 
   # create git tag and draft release when version is bumped
@@ -229,8 +232,9 @@ jobs:
           # delete existing draft for this tag if present
           gh release delete "$TAG_NAME" --yes 2>/dev/null || true
           
-          # create draft release with all jars attached
+          # create draft release with all compiled mod jars attached
           gh release create "$TAG_NAME" release_artifacts/*.jar \
             --draft \
             --title "IPWL $TAG_NAME" \
+            --target main \
             --generate-notes
