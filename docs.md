@@ -66,7 +66,7 @@ Every inbound connection must pass through a strict 9-step evaluation pipeline:
 ## 2. Installation & Requirements
 
 - **Platform**: Fabric Server (Server-Side Only; clients do not need the mod installed)
-- **Supported Minecraft Versions**: `1.21.1` through `1.21.11`, `26.1`, `26.2`
+- **Supported Minecraft Versions**: `1.21.1` through `1.21.11`, `26.1`, `26.2`, `26.3`
 - **Fabric Loader**: `>= 0.19.0`
 - **Java**: Java 21+ (Java 25 recommended for latest versions)
 
