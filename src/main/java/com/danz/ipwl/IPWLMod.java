@@ -3,10 +3,9 @@ package com.danz.ipwl;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.command.ServerCommandSource;
+import net.minecraft.text.Text;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,31 +59,26 @@ public class IPWLMod implements ModInitializer {
         LOGGER.info("IPWhiteList: Server stopped, all data saved");
     }
 
-    public static boolean hasPermission(CommandSourceStack source) {
-        if (!(source.getEntity() instanceof ServerPlayer)) return true;
-        var server = source.getServer();
-        if (server != null && server.getPlayerList().isOp(((ServerPlayer) source.getEntity()).nameAndId())) return true;
-        return config != null && config.isAdmin(source.getTextName());
+    public static boolean hasPermission(ServerCommandSource source) {
+        if (!source.isExecutedByPlayer()) return true;
+        if (source.hasPermissionLevel(4)) return true;
+        return config != null && config.isAdmin(source.getName());
     }
 
-    public static void sendFeedback(CommandSourceStack source, String message) {
+    public static void sendFeedback(ServerCommandSource source, String message) {
         String clean = message.replaceAll("§[0-9a-fk-or]", "");
-        if (!(source.getEntity() instanceof ServerPlayer)) {
-            source.sendSuccess(() -> Component.literal(clean), false);
+        if (!source.isExecutedByPlayer()) {
+            source.sendFeedback(() -> Text.literal(clean), false);
         } else {
-            source.sendSuccess(() -> Component.literal(message), false);
+            source.sendFeedback(() -> Text.literal(message), false);
             LOGGER.info("[IPWL] " + clean);
         }
     }
 
-    public static void sendFeedback(CommandSourceStack source, Component message) {
-        source.sendSuccess(() -> message, false);
-    }
-
-    public static Component disconnectMessage(String coloredMessage) {
+    public static Text disconnectMessage(String coloredMessage) {
         String clean = coloredMessage.replaceAll("§[0-9a-fk-or]", "");
         LOGGER.info("[IPWL] Disconnecting player: {}", clean);
-        return Component.literal(coloredMessage);
+        return Text.literal(coloredMessage);
     }
 
     /**
