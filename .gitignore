@@ -71,3 +71,4 @@ logs/
 **/logs/
 
 dist_jars/
+release_artifacts/
