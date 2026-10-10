@@ -75,3 +75,4 @@ jobs:
             # Warning only for now to avoid blocking older commits
             echo "Please use Conventional Commits (chore:, fix:, security:, feat:, docs:, ci:) in future commits."
           fi
+
