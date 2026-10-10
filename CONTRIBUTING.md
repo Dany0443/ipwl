@@ -2,9 +2,7 @@
 
 Thank you for contributing to IPWL! To keep the repository organized and ensure seamless automated builds and releases, please follow these guidelines.
 
----
-
-## 🌿 Branching Model
+## Branching Model
 
 IPWL uses a **multi-version branching strategy**:
 
@@ -18,9 +16,7 @@ IPWL uses a **multi-version branching strategy**:
 - Fixes or backports specific to an older Minecraft version should target that version's dedicated branch (e.g. `1.21.1`).
 - All code for the mod is located directly at the root of each branch (`src/`, `build.gradle`, etc.).
 
----
-
-## 💬 Commit Message Convention
+## Commit Message Convention
 
 We follow the [Conventional Commits](https://www.conventionalcommits.org/) specification. All commit messages and pull request titles should use the format:
 
@@ -42,9 +38,7 @@ We follow the [Conventional Commits](https://www.conventionalcommits.org/) speci
 | `ci:` | Changes to CI/CD workflows and scripts | `ci(release): add automated draft release workflow` |
 | `test:` | Adding or modifying tests | `test(ip): add unit tests for IPv6 parsing` |
 
----
-
-## 🛠️ Local Development & Testing
+## Local Development and Testing
 
 1. Ensure you have **Java 25** installed.
 2. Clone the repository and switch to your desired version branch:
@@ -57,9 +51,7 @@ We follow the [Conventional Commits](https://www.conventionalcommits.org/) speci
    ```
 4. Compiled jars will be generated in `build/libs/`.
 
----
-
-## 🚀 Automated CI & Releases
+## Automated CI and Releases
 
 - **Continuous Integration (`build.yml`)**: Compiles the jar file automatically on every push and pull request across all branches. Jars are uploaded as GitHub Actions artifacts.
 - **Draft Releases (`release-draft.yml`)**: Automatically compiles jars across all supported Minecraft version branches in parallel and attaches them to a GitHub Release draft.

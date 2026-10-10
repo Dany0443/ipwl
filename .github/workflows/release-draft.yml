@@ -144,3 +144,4 @@ jobs:
             "${EXTRA_FLAGS[@]}"
 
           echo "Draft release created successfully for $TAG_NAME"
+

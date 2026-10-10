@@ -6,7 +6,7 @@ A server-side mod that adds a second security layer on top of Mojang authenticat
 
 ---
 
-## 🌿 Version Branches
+## Version Branches
 
 Each supported Minecraft version is maintained in its own dedicated branch:
 
@@ -29,7 +29,7 @@ Each supported Minecraft version is maintained in its own dedicated branch:
 
 ---
 
-## 🔨 Building from Source
+## Building from Source
 
 ```bash
 git clone https://github.com/Dany0443/ipwl.git
@@ -46,7 +46,7 @@ Compiled `.jar` files will be in `build/libs/`.
 
 ---
 
-## 🤝 Contributing & Commit Convention
+## Contributing and Commit Convention
 
 Please see [CONTRIBUTING.md](CONTRIBUTING.md) for branch workflow, Conventional Commit guidelines (`chore:`, `fix:`, `security:`, `feat:`), and pull request instructions.
 
