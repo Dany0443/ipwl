@@ -51,7 +51,7 @@ jobs:
           echo "safe_ref=$SAFE_REF" >> "$GITHUB_OUTPUT"
 
       - name: Upload compiled jar artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ipwl-${{ steps.meta.outputs.safe_ref }}
           path: |
