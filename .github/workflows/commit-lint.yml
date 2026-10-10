@@ -1,0 +1,77 @@
+name: Lint Commit and PR Titles
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+  push:
+    branches:
+      - main
+
+permissions:
+  pull-requests: read
+  contents: read
+
+jobs:
+  lint-pr-title:
+    name: Validate PR Title Convention
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Validate PR Title
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            security
+            Security
+            chore
+            docs
+            style
+            refactor
+            perf
+            test
+            build
+            ci
+            revert
+          requireScope: false
+          subjectPattern: ^(?![A-Z]).+$
+          subjectPatternError: "The subject must start with a lowercase character."
+
+  lint-commits:
+    name: Validate Commit Messages
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 10
+
+      - name: Verify commit message formatting
+        shell: bash
+        run: |
+          PATTERN="^(feat|fix|security|Security|chore|docs|style|refactor|perf|test|build|ci|revert)(\([a-zA-Z0-9_\-\/]+\))?!?: .+"
+          INVALID=0
+
+          while IFS= read -r commit_hash; do
+            msg=$(git log -1 --format=%s "$commit_hash")
+            # Skip merge commits
+            if [[ "$msg" =~ ^Merge ]]; then
+              continue
+            fi
+            if ! [[ "$msg" =~ $PATTERN ]]; then
+              echo "::error file=git-commit,title=Invalid Commit Format::Commit '$commit_hash' does not follow convention: '$msg'"
+              echo "Expected format: <type>(<scope>): <description> (e.g. 'chore: ...', 'fix: ...', 'security: ...')"
+              INVALID=$((INVALID + 1))
+            else
+              echo "Valid: $msg"
+            fi
+          done < <(git rev-list --max-count=5 HEAD)
+
+          if [ $INVALID -gt 0 ]; then
+            echo "Found $INVALID commits that do not match the conventional commit pattern."
+            # Warning only for now to avoid blocking older commits
+            echo "Please use Conventional Commits (chore:, fix:, security:, feat:, docs:, ci:) in future commits."
+          fi
