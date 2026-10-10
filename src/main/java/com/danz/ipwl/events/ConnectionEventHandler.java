@@ -28,7 +28,7 @@ public class ConnectionEventHandler {
     public static void register() {
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
             ServerPlayer player = handler.player;
-            String username = player.getName().getString();
+            String username = player.getGameProfile().name();
 
             String ip = "unknown";
             SocketAddress remote = handler.getRemoteAddress();
@@ -51,7 +51,7 @@ public class ConnectionEventHandler {
 
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
             ServerPlayer player = handler.player;
-            String username = player.getName().getString();
+            String username = player.getGameProfile().name();
             String ip = "unknown";
             SocketAddress remote = handler.getRemoteAddress();
             if (remote instanceof InetSocketAddress addr && addr.getAddress() != null) {

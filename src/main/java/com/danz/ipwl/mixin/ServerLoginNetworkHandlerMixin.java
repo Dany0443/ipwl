@@ -56,7 +56,7 @@ public abstract class ServerLoginNetworkHandlerMixin {
         if (IPWLMod.getConfig().isBannedIp(ip)) {
             security.recordBlockedConnection();
             IPWLMod.LOGGER.warn("[IPWL SECURITY] Permanently banned IP {} tried to connect as {}", ip, username);
-            disconnect(Component.literal(IPWLMessages.get("ipwl.disconnect.temp_banned")));
+            disconnect(Component.literal(IPWLMessages.get("ipwl.disconnect.banned_ip")));
             ci.cancel();
             return;
         }
@@ -141,7 +141,7 @@ public abstract class ServerLoginNetworkHandlerMixin {
             var playerManager = server.getPlayerList();
             if (playerManager == null) return false;
             for (ServerPlayer player : playerManager.getPlayers()) {
-                if (player.getName().getString().equals(username)) return true;
+                if (player.getGameProfile().name().equalsIgnoreCase(username)) return true;
             }
         } catch (Exception e) {
             IPWLMod.LOGGER.warn("[IPWL] Error checking online players: {}", e.getMessage());

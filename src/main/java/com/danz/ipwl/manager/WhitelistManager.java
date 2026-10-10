@@ -61,7 +61,7 @@ public class WhitelistManager {
                 for (JsonElement el : entry.getValue().getAsJsonArray()) {
                     ips.add(el.getAsString());
                 }
-                whitelist.put(entry.getKey(), ips);
+                whitelist.put(entry.getKey().trim().toLowerCase(), ips);
             }
         } catch (IOException e) {
             IPWLMod.LOGGER.error("Failed to load whitelist", e);
@@ -92,35 +92,37 @@ public class WhitelistManager {
     // -------------------------------------------------------------------------
 
     public void addPlayer(String username, String ip) {
-        whitelist.computeIfAbsent(username.trim(), k -> new HashSet<>()).add(ip.trim());
+        whitelist.computeIfAbsent(username.trim().toLowerCase(), k -> new HashSet<>()).add(ip.trim());
         save();
     }
 
     public void addIpToPlayer(String username, String ip) {
-        if (whitelist.containsKey(username.trim())) {
-            whitelist.get(username.trim()).add(ip.trim());
+        String key = username.trim().toLowerCase();
+        if (whitelist.containsKey(key)) {
+            whitelist.get(key).add(ip.trim());
             save();
         }
     }
 
     public void removeIpFromPlayer(String username, String ip) {
-        if (whitelist.containsKey(username.trim())) {
-            whitelist.get(username.trim()).remove(ip.trim());
+        String key = username.trim().toLowerCase();
+        if (whitelist.containsKey(key)) {
+            whitelist.get(key).remove(ip.trim());
             save();
         }
     }
 
     public void removePlayer(String username) {
-        whitelist.remove(username.trim());
+        whitelist.remove(username.trim().toLowerCase());
         save();
     }
 
     public boolean hasPlayer(String username) {
-        return whitelist.containsKey(username.trim());
+        return whitelist.containsKey(username.trim().toLowerCase());
     }
 
     public Set<String> getPlayerIps(String username) {
-        return whitelist.getOrDefault(username.trim(), new HashSet<>());
+        return whitelist.getOrDefault(username.trim().toLowerCase(), new HashSet<>());
     }
 
     // -------------------------------------------------------------------------
@@ -171,7 +173,7 @@ public class WhitelistManager {
             return new WhitelistResult(true, "Temporary approval");
         }
 
-        Set<String> allowedIps = whitelist.get(username);
+        Set<String> allowedIps = whitelist.get(username.trim().toLowerCase());
         if (allowedIps == null) {
             return new WhitelistResult(false, "Player not in whitelist");
         }
@@ -303,12 +305,11 @@ public class WhitelistManager {
     if (server == null) return;
     var playerManager = server.getPlayerList();
     if (playerManager == null) return;
-    var admins = IPWLMod.getConfig().getAdmins();
-    playerManager.getPlayers().forEach(p -> {
-        if (admins.contains(p.getName().getString())) {
-            p.sendSystemMessage(Component.literal(message));
-        }
-    });
+        playerManager.getPlayers().forEach(p -> {
+            if (IPWLMod.hasPermission(p.createCommandSourceStack())) {
+                p.sendSystemMessage(Component.literal(message));
+            }
+        });
     }
 
     // -------------------------------------------------------------------------

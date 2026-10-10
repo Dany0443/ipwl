@@ -1,5 +1,6 @@
 {
   "ipwl.disconnect.lockdown":         "Server is in lockdown mode. Only admins may join.",
+  "ipwl.disconnect.banned_ip":        "Your IP address is permanently banned from this server.",
   "ipwl.disconnect.temp_banned":      "Your IP has been temporarily banned due to repeated failed attempts.",
   "ipwl.disconnect.rate_limit":       "Too many connection attempts. Please wait before trying again.",
   "ipwl.disconnect.duplicate":        "That account is already connected to this server.",
