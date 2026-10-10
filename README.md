@@ -15,17 +15,17 @@ Each supported Minecraft version is maintained in its own dedicated branch:
 | **26.3** | [`main`](https://github.com/Dany0443/ipwl/tree/main) / [`26.3`](https://github.com/Dany0443/ipwl/tree/26.3) | Active (Latest) |
 | **26.2** | [`26.2`](https://github.com/Dany0443/ipwl/tree/26.2) | Maintained |
 | **26.1** | [`26.1`](https://github.com/Dany0443/ipwl/tree/26.1) | Maintained |
-| **1.21.11** | [`1.21.11`](https://github.com/Dany0443/ipwl/tree/1.21.11) | Maintained |
-| **1.21.10** | [`1.21.10`](https://github.com/Dany0443/ipwl/tree/1.21.10) | Maintained |
-| **1.21.9** | [`1.21.9`](https://github.com/Dany0443/ipwl/tree/1.21.9) | Maintained |
-| **1.21.8** | [`1.21.8`](https://github.com/Dany0443/ipwl/tree/1.21.8) | Maintained |
-| **1.21.7** | [`1.21.7`](https://github.com/Dany0443/ipwl/tree/1.21.7) | Maintained |
-| **1.21.6** | [`1.21.6`](https://github.com/Dany0443/ipwl/tree/1.21.6) | Maintained |
-| **1.21.5** | [`1.21.5`](https://github.com/Dany0443/ipwl/tree/1.21.5) | Maintained |
-| **1.21.4** | [`1.21.4`](https://github.com/Dany0443/ipwl/tree/1.21.4) | Maintained |
-| **1.21.3** | [`1.21.3`](https://github.com/Dany0443/ipwl/tree/1.21.3) | Maintained |
-| **1.21.2** | [`1.21.2`](https://github.com/Dany0443/ipwl/tree/1.21.2) | Maintained |
-| **1.21.1** | [`1.21.1`](https://github.com/Dany0443/ipwl/tree/1.21.1) | Maintained |
+| **1.21.11** | [`1.21.11`](https://github.com/Dany0443/ipwl/tree/1.21.11) | Paused |
+| **1.21.10** | [`1.21.10`](https://github.com/Dany0443/ipwl/tree/1.21.10) | Paused |
+| **1.21.9** | [`1.21.9`](https://github.com/Dany0443/ipwl/tree/1.21.9) | Paused |
+| **1.21.8** | [`1.21.8`](https://github.com/Dany0443/ipwl/tree/1.21.8) | Paused |
+| **1.21.7** | [`1.21.7`](https://github.com/Dany0443/ipwl/tree/1.21.7) | Paused |
+| **1.21.6** | [`1.21.6`](https://github.com/Dany0443/ipwl/tree/1.21.6) | Paused |
+| **1.21.5** | [`1.21.5`](https://github.com/Dany0443/ipwl/tree/1.21.5) | Paused |
+| **1.21.4** | [`1.21.4`](https://github.com/Dany0443/ipwl/tree/1.21.4) | Paused |
+| **1.21.3** | [`1.21.3`](https://github.com/Dany0443/ipwl/tree/1.21.3) | Paused |
+| **1.21.2** | [`1.21.2`](https://github.com/Dany0443/ipwl/tree/1.21.2) | Paused |
+| **1.21.1** | [`1.21.1`](https://github.com/Dany0443/ipwl/tree/1.21.1) | Paused |
 
 ---
 

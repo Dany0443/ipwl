@@ -2,6 +2,7 @@ package com.danz.ipwl.config;
 
 import com.google.gson.*;
 import com.danz.ipwl.IPWLMod;
+import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.File;
 import java.io.FileReader;
@@ -12,7 +13,7 @@ import java.util.Set;
 
 public class IPWLConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final File CONFIG_FILE = new File("config/ipwl.json");
+    private static final File CONFIG_FILE = FabricLoader.getInstance().getConfigDir().resolve("ipwl.json").toFile();
 
     private int maxConnectionsPerIp = 2;
     private long rateLimitWindowMs = 1000;
@@ -66,9 +67,12 @@ public class IPWLConfig {
     }
 
     // --- Admins ---
-    public boolean isAdmin(String username) { return admins.contains(username); }
-    public void addAdmin(String username)    { admins.add(username); save(); }
-    public void removeAdmin(String username) { admins.remove(username); save(); }
+    public boolean isAdmin(String username) {
+        if (username == null) return false;
+        return admins.stream().anyMatch(a -> a.equalsIgnoreCase(username.trim()));
+    }
+    public void addAdmin(String username)    { admins.add(username.trim().toLowerCase()); save(); }
+    public void removeAdmin(String username) { admins.removeIf(a -> a.equalsIgnoreCase(username.trim())); save(); }
     public Set<String> getAdmins()           { return new HashSet<>(admins); }
 
     // --- Permanent IP bans ---
