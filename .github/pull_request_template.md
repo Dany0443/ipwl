@@ -18,3 +18,4 @@
 - [ ] My commit messages and PR title follow Conventional Commits (e.g. `feat: ...`, `fix: ...`, `security: ...`)
 - [ ] I have tested this build locally using `./gradlew build`
 - [ ] No unwanted files, temporary artifacts, or duplicate templates are included
+
