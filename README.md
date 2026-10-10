@@ -6,6 +6,52 @@ A server-side mod that adds a second security layer on top of Mojang authenticat
 
 ---
 
+## 🌿 Version Branches
+
+Each supported Minecraft version is maintained in its own dedicated branch:
+
+| Minecraft Version | Branch | Status |
+|---|---|---|
+| **26.3** | [`main`](https://github.com/Dany0443/ipwl/tree/main) / [`26.3`](https://github.com/Dany0443/ipwl/tree/26.3) | Active (Latest) |
+| **26.2** | [`26.2`](https://github.com/Dany0443/ipwl/tree/26.2) | Maintained |
+| **26.1** | [`26.1`](https://github.com/Dany0443/ipwl/tree/26.1) | Maintained |
+| **1.21.11** | [`1.21.11`](https://github.com/Dany0443/ipwl/tree/1.21.11) | Maintained |
+| **1.21.10** | [`1.21.10`](https://github.com/Dany0443/ipwl/tree/1.21.10) | Maintained |
+| **1.21.9** | [`1.21.9`](https://github.com/Dany0443/ipwl/tree/1.21.9) | Maintained |
+| **1.21.8** | [`1.21.8`](https://github.com/Dany0443/ipwl/tree/1.21.8) | Maintained |
+| **1.21.7** | [`1.21.7`](https://github.com/Dany0443/ipwl/tree/1.21.7) | Maintained |
+| **1.21.6** | [`1.21.6`](https://github.com/Dany0443/ipwl/tree/1.21.6) | Maintained |
+| **1.21.5** | [`1.21.5`](https://github.com/Dany0443/ipwl/tree/1.21.5) | Maintained |
+| **1.21.4** | [`1.21.4`](https://github.com/Dany0443/ipwl/tree/1.21.4) | Maintained |
+| **1.21.3** | [`1.21.3`](https://github.com/Dany0443/ipwl/tree/1.21.3) | Maintained |
+| **1.21.2** | [`1.21.2`](https://github.com/Dany0443/ipwl/tree/1.21.2) | Maintained |
+| **1.21.1** | [`1.21.1`](https://github.com/Dany0443/ipwl/tree/1.21.1) | Maintained |
+
+---
+
+## 🔨 Building from Source
+
+```bash
+git clone https://github.com/Dany0443/ipwl.git
+cd ipwl
+
+# Switch to desired Minecraft version branch (or stay on main for latest 26.3)
+git checkout 1.21.1
+
+# Build jar
+./gradlew build
+```
+
+Compiled `.jar` files will be in `build/libs/`.
+
+---
+
+## 🤝 Contributing & Commit Convention
+
+Please see [CONTRIBUTING.md](CONTRIBUTING.md) for branch workflow, Conventional Commit guidelines (`chore:`, `fix:`, `security:`, `feat:`), and pull request instructions.
+
+---
+
 ## Installation
 
 1. Drop the `.jar` into your server `mods/` folder.
