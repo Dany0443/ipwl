@@ -7,9 +7,9 @@ Thank you for contributing to IPWL! To keep the repository organized and ensure 
 IPWL uses a **multi-version branching strategy**:
 
 - **`main`**: The primary development branch. Contains the latest codebase targeting the newest Minecraft version (**26.3**).
-- **`26.3`**: Tracks Minecraft 26.3.
-- **`26.2`**, **`26.1`**: Dedicated branches for 26.x versions.
-- **`1.21.1`** through **`1.21.11`**: Dedicated branches for Minecraft 1.21.x releases.
+- **`26.3`**: Tracks Minecraft 26.3 (Active / Maintained).
+- **`26.2`**, **`26.1`**: Dedicated branches for 26.x versions (Maintained).
+- **`1.21.1`** through **`1.21.11`**: Dedicated branches for legacy 1.21.x releases (Paused).
 
 ### Submitting Pull Requests
 - New features and active enhancements should be submitted against **`main`**.
